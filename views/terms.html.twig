@@ -1,0 +1,53 @@
+{% extends "layout.html.twig" %}
+
+{% block content %}
+    <h1>Terms of Service</h1>
+
+    <p>This service is <strong class="text-uppercase">only</strong> to be used for BZFlag-related purposes. This is <strong class="text-uppercase">not</strong> a general image host. Any images that are not intended for BZFlag-related purposes will be denied.</p>
+
+    <h2>Allowable Content</h2>
+
+    <p>We do not allow unlawful, harassing, libelous, privacy invading, abusive, threatening, harmful, vulgar, obscene, indecent, tortious, or otherwise objectionable content, or content that infringes or may infringe the intellectual property or other rights of another.</p>
+
+    <p>The moderators and administrators of the {{ site_name }} service reserve the right to deny or remove any uploaded files and any reference to such files at any time without notice or warning.</p>
+
+    <h2>Licensing</h2>
+
+    <p>By uploading any files to the {{ site_name }}, you agree to the following terms:</p>
+    <h3>If you own all rights to the file:</h3>
+    <p>You may upload the file under an OSI-approved license of your choice.</p>
+    <h3>If you do not own the file:</h3>
+    <p>If the file is released under an OSI-approved license, you may upload the file under the same license with which the file was released.  If the file was <strong class="text-uppercase">not</strong> released under an OSI-approved license, you must obtain written permission from the copyright holder, and provide that written permission.</p>
+    <p>For more information about using files created by someone else, see our Permission to Use Content section below.</p>
+    <h3>In any case:</h3>
+    <p>The file must be released or licensed under an OSI-approved license. We will <strong class="text-uppercase">not</strong> host files that are released under a proprietary license.</p>
+
+    <h2>Removal of Copyrighted Material</h2>
+
+    <p>While we try our best to disallow any copyrighted material from being hosting by this service, there is a chance that some will slip past our moderators.  We actively comply with any take down notices and will remove the copyrighted material as soon as possible.  Send any take down notices to <a href="mailto:{{ takedown_address }}">{{ takedown_address }}</a>.</p>
+
+    <h2>Permission to Use Content</h2>
+
+    <p>Some users have misconceptions about copyright and permission to use other peoples' content. This information below may help correct a few of these misconceptions.</p>
+
+    <h3>No copyright notice</h3>
+
+    <p>A lack of a copyright notice does <strong class="text-uppercase">not</strong> imply a lack of copyright.  The notice is not required.</p>
+
+    Quote from Wikipedia:<br>
+    <blockquote cite="http://en.wikipedia.org/wiki/Copyright#Obtaining_and_enforcing_copyright"><a href="http://en.wikipedia.org/wiki/Copyright#Obtaining_and_enforcing_copyright" class="quotesource">Source</a>
+        <p>&ldquo;In the United States, copyright has been made automatic (in the style of the Berne Convention) since March 1, 1989, which has had the effect of making it appear to be more like a property right. Thus, as with some forms of personal property, a copyright need not be granted or obtained through official registration with any government office.&rdquo;</p>
+    </blockquote>
+
+    <h3>Explicit permission</h3>
+
+    <p>Just because you found an image on a website and even if tons of sites are using the picture, that doesn't give you the right to use it.  The author of the content has to grant permission (and do so explicitly in writing).  If you found an image on a website and it doesn't have a statement saying that you are allowed to use the image, then you cannot use the image.  In many cases, you may contact the author (presuming they are the original author and/or copyright holder) and obtain their permission directly.  Either way, you will need to provide either a link to their permission statement on their site, a copy of an e-mail from the author granting use, or other similar explicit permission statement.</p>
+
+    <h3>Derivative work</h3>
+
+    <p>If you've modified someone else's image and created your own derivative (e.g. taking the BZFlag tank icon and slapping a decal logo on the side), the original author must have explicitly granted permission to create and redistribute that derivative.  You may find it hilarious to draw a moustache on a likeness of Steve Jobs that you want to use on your server, but unless you have a statement from the person that took the original picture that grants you that right, then the image cannot be hosted.  Sites that say their content is available under many of the licenses that we've already listed allow derivative works (e.g. LGPL, BSD, CC-by, etc).</p>
+
+    <h3>Open Source terms</h3>
+
+    <p>Only images that are available under OSI-approved terms or under one of the allowed Creative Commons license will generally be approved for hosting.  If you are the original author, using either the LGPL, BSD, CC-by, CC-by-sa, or public domain terms for your content is highly recommended.  Content that does not fit the <a href="https://opensource.org/osd/">terms of the Open Source definition</a> is not allowed with this service even if you are the copyright holder.</p>
+{% endblock %}
