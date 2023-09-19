@@ -1,0 +1,24 @@
+body {
+    background: url('../images/hexagonal-camo.png');
+}
+
+.front {
+    z-index: 999;
+}
+
+.file_preview {
+    transition: all 330ms ease-in-out;
+    width: 128px;
+    height: 128px;
+    cursor: zoom-in;
+}
+
+.file_preview.expanded {
+    width: 512px;
+    height: 512px;
+    cursor: zoom-out;
+}
+
+.file_metadata {
+    margin-left: 144px;
+}

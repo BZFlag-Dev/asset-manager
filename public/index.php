@@ -70,6 +70,14 @@ $container->set(Configuration::class, function () {
       'image' => Expect::structure([
         'max_width' => Expect::int(256),
         'max_height' => Expect::int(256)
+      ]),
+      'upload' => Expect::structure([
+        'max_file_size' => Expect::int(2 * 1024 * 1024)->min(512 * 1024),
+        'max_file_count' => Expect::int(8)->min(1)->max(20),
+        'licenses' => Expect::listOf(Expect::structure([
+          'name' => Expect::string()->required(),
+          'url' => Expect::string()->required()
+        ]))->required()
       ])
     ]),
     'email' => Expect::structure([
@@ -144,7 +152,7 @@ $app->get('/', [ManagementController::class, 'home'])->setName('home');
 $app->get('/login[/{token}/{username}]', [ManagementController::class, 'login'])->setName('login');
 $app->get('/logout', [ManagementController::class, 'logout'])->setName('logout');
 $app->get('/terms', [ManagementController::class, 'terms'])->setName('terms');
-$app->get('/upload', [ManagementController::class, 'upload'])->setName('upload');
+$app->map(['GET', 'POST'], '/upload', [ManagementController::class, 'upload'])->setName('upload');
 
 $app->get('/view/{bzid}/{queueid}[/{width}/{height}]', [AssetController::class, 'view'])->setName('view');
 

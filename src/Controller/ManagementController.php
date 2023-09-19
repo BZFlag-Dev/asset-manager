@@ -126,10 +126,39 @@ class ManagementController
     ]);
   }
 
-  public function upload(ServerRequestInterface $request, ResponseInterface $response, Twig $twig): ResponseInterface
+  public function upload(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config): ResponseInterface
   {
-    return $twig->render($response, 'upload.html.twig', [
+    if ($request->getMethod() == 'GET') {
+      $convertToBytes = function ($size) {
+        if (str_ends_with($size, 'G')) {
+          return (int)$size * 1024 * 1024 * 1024;
+        } elseif (str_ends_with($size, 'M')) {
+          return (int)$size * 1024 * 1024;
+        } elseif (str_ends_with($size, 'K')) {
+          return (int)$size * 1024;
+        } else {
+          return (int)$size;
+        }
+      };
 
-    ]);
+      $upload_config = $config->get('asset.upload');
+      $upload_config['max_file_size'] = min($upload_config['max_file_size'], $convertToBytes(ini_get('upload_max_filesize')));
+      $upload_config['max_file_count'] = min($upload_config['max_file_count'], ini_get('max_file_uploads'));
+      // TODO: Check if we need to factor in a buffer to contain files AND other form data within this max post size
+      $upload_config['max_post_size'] = min($upload_config['max_file_size'] * $upload_config['max_file_count'], $convertToBytes(ini_get('post_max_size')));
+      $upload_config['accept'] = ".png";
+
+      return $twig->render($response, 'upload.html.twig', [
+        'upload_config' => $upload_config
+      ]);
+    } elseif ($request->getMethod() == 'POST') {
+      // TODO: Actually process the files/data
+      sleep(2);
+      $response->getBody()->write(json_encode([
+        'success' => false
+      ]));
+      return $response
+        ->withHeader('Content-Type', 'application/json');
+    }
   }
 }

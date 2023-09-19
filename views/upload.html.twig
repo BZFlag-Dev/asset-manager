@@ -1,0 +1,133 @@
+{% extends "layout.html.twig" %}
+
+{% from 'macros.twig' import bytesToSize %}
+
+{% block content %}
+    <form action="{{ url_for('upload') }}" id="uploads" class="mx-3">
+        <input type="hidden" name="success" value="1">
+
+        <div class="container text-center">
+            <h3>Upload Limits</h3>
+            <div class="row">
+                <div class="col col-12 col-lg-4 mb-3 mb-lg-0">
+                    Maximum Size Per File:<br>
+                    {{ bytesToSize(upload_config.max_file_size) }}
+                </div>
+                <div class="col col-12 col-lg-4 mb-3 mb-lg-0">
+                    Files: <span id="total_files">0</span> out of {{ upload_config.max_file_count }}
+                    <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar" id="total_files_progress" style="width: 0"></div>
+                    </div>
+                </div>
+                <div class="col col-md-12 col-lg-4 mb-md-3">
+                    Total Size: <span id="total_size">0B</span> out of {{ bytesToSize(upload_config.max_post_size) }}
+                    <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar" id="total_size_progress" style="width: 0"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr>
+
+        <div id="file_list"></div>
+
+        <template id="file_template">
+        <div class="upload mb-3 pb-3 border-bottom">
+            <input type="file" name="uploads[][file]" class="d-none" accept="{{ upload_config.accept }}">
+            <div class="row mb-3">
+                <div class="col me-3 position-relative">
+                    <h3>File Information</h3>
+                    <!--<img class="file_image_preview float-start d-none pe-3 pb-3">-->
+                    <canvas class="file_preview d-none position-absolute" width="512" height="512"></canvas>
+                    <div class="file_metadata">
+                        Filename:<br>
+                        <span class="file_name font-monospace bg-dark-subtle p-1"></span><br>
+                        File size: <span class="file_size"></span><br>
+                        <button class="btn btn-outline-danger mt-3 remove-file" type="button">Remove File</button>
+                    </div>
+                </div>
+                <div class="col">
+                    <h3>Source Information</h3>
+                    <label class="form-label">Author Name:</label>
+                    <input type="text" class="form-control" name="uploads[][author]" required>
+
+                    <label class="form-label">Source URL:</label>
+                    <input type="text" class="form-control" name="uploads[][author]">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <label class="form-label">License for this file:</label>
+                    <select class="form-select license-select" name="uploads[][license]" required>
+                        <option value="">Select a license</option>
+                        <option value="1">MIT</option>
+                        <option value="2">Creative Commons Zero (CC0)</option>
+                        <option value="3">Creative Commons Attribution (CC-BY)</option>
+                        <option value="4">GNU LGPL 2.1</option>
+                        <option value="255">Other OSI-Approved License</option>
+                    </select>
+
+                    <div class="custom-license d-none">
+                        <label class="form-label">License Name:</label>
+                        <input type="text" class="form-control license-name" name="uploads[][license_name]">
+
+                        <label class="form-label">License URL:</label>
+                        <input type="text" class="form-control license-url" name="uploads[][license_url]">
+                    </div>
+                </div>
+                <div class="col custom-license d-none">
+                    <label class="form-label">License Text:</label>
+                    <textarea class="form-control license-text" name="uploads[][license_text]" rows="8"></textarea>
+                </div>
+            </div>
+        </div>
+        </template>
+
+        <div class="row mb-5">
+            <div class="col">
+                <label class="form-label" for="new_files">Add additional files</label>
+                <input type="file" class="form-control" id="new_files" multiple accept="{{ upload_config.accept }}" required>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <h3>Uploader Information</h3>
+            <div class="col">
+                <label class="form-label">Username:</label>
+                <input type="text" class="form-control" disabled value="{{ username }}">
+            </div>
+
+            <div class="col">
+                <label class="form-label" for="first_name">First Name:</label>
+                <input type="text" class="form-control" id="first_name" required>
+            </div>
+
+            <div class="col">
+                <label class="form-label" for="last_name">Last Name:</label>
+                <input type="text" class="form-control" id="last_name" required>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col form-check">
+                <input class="form-check-inline" type="checkbox" value="1" id="agree_terms" required>
+                <label class="form-check-label" for="agree_terms">I confirm that all of the above images comply with the <a href="{{ url_for('terms') }}" target="_blank">Terms of Service</a>.</label>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <button type="submit" class="btn btn-primary mt-3" id="btn_upload_assets">Upload Assets</button>
+            </div>
+        </div>
+    </form>
+
+    <script>
+        const max_file_size = {{ upload_config.max_file_size }};
+        const max_file_count = {{ upload_config.max_file_count }};
+        const max_post_size = {{ upload_config.max_post_size }};
+    </script>
+
+
+    <script src="{{ base_path() }}/js/upload.js"></script>
+{% endblock %}
