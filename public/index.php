@@ -31,7 +31,12 @@ use Slim\Views\TwigMiddleware;
 
 require __DIR__ . '/../vendor/autoload.php';
 
+$session_save_path = ini_get('session.save_path').DIRECTORY_SEPARATOR.'asset-manager';
+if (!is_dir($session_save_path))
+  mkdir($session_save_path);
 session_start([
+    'save_path' => $session_save_path,
+    'gc_maxlifetime' => 60 * 60 * 2,
     'cookie_httponly' => true,
     'cookie_samesite' => 'Strict',
     'use_trans_sid' => false
