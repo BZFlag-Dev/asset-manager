@@ -138,11 +138,24 @@ const total_size_progress = document.getElementById('total_size_progress');
 let total_bytes = 0;
 
 function updateTotals() {
+    // Set the required status for the new file element in case there are no files selected
     new_files.required = (total_files === 0);
+
+    // Update the display of the total files
     total_files_span.innerHTML = total_files;
     total_files_progress.style.width = Math.min(100, total_files / max_file_count * 100)+'%';
+    if (total_files > max_file_count)
+        total_files_progress.classList.add('bg-danger');
+    else
+        total_files_progress.classList.remove('bg-danger');
+
+    // Update the display of the total file size
     total_size_span.innerHTML = bytesToSize(total_bytes);
     total_size_progress.style.width = Math.min(100, total_bytes / max_post_size * 100)+'%';
+    if (total_bytes > max_post_size)
+        total_size_progress.classList.add('bg-danger');
+    else
+        total_size_progress.classList.remove('bg-danger');
 }
 
 // Custom form validation tooltips
