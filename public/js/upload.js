@@ -108,6 +108,23 @@ function removeFile(ev) {
     upload_container.parentNode.removeChild(upload_container);
 }
 
+const dialog = new bootstrap.Modal(document.getElementById('dialog'), {})
+const dialog_title = document.getElementById('dialog_message');
+const dialog_message = document.getElementById('dialog_message');
+function showDialog(title, message) {
+    dialog_title.innerText = title;
+    dialog_message.innerHTML = '';
+    if (!Array.isArray(message)) {
+        message = [message]
+    }
+    for (let i = 0; i < message.length; ++i) {
+        const p = document.createElement('p');
+        p.innerText = message[i];
+        dialog_message.append(p);
+    }
+    dialog.show();
+}
+
 const container = document.getElementById('file_list');
 const template = document.getElementById('file_template');
 const new_files = document.getElementById('new_files');
@@ -147,10 +164,11 @@ setInvalidMessage('#agree_terms', 'All images must comply with the Terms of Serv
 new_files.addEventListener('change', function(ev) {
     if (ev.target.tagName === 'INPUT' && ev.target.type === 'file') {
         const fragment = document.createDocumentFragment();
+        let errors = []
         for (const file of ev.target.files) {
             // Check if the file exceeds the maximum file size
             if (file.size > max_file_size) {
-                alert("%FILENAME% exceeds the maximum file size.".replace('%FILENAME%', file.name));
+                errors.push("%FILENAME% exceeds the maximum file size.".replace('%FILENAME%', file.name));
                 continue;
             }
 
@@ -198,7 +216,13 @@ new_files.addEventListener('change', function(ev) {
             // Add the new file section to our fragment
             fragment.appendChild(clonedTemplate);
         }
+
+        // Clear the file selector
         ev.target.value = '';
+
+        // Show errors, if any
+        if (errors.length > 0)
+            showDialog('Error', errors);
 
         // Append the document fragment to the DOM
         container.appendChild(fragment);
@@ -211,21 +235,18 @@ document.getElementById('uploads').addEventListener('submit', async (ev) => {
 
     // There should already be at least one due to other validation, but just double check
     if (total_files < 1) {
-        // TODO: Better error notification
-        alert("You must have provide at least one file.");
+        showDialog('Error', 'You must have provide at least one file.');
         return;
     }
     // Verify we don't have too many files
     else if (total_files > max_file_count) {
-        // TODO: Better error notification
-        alert("Too many files provided.");
+        showDialog('Error', 'Too many files provided.');
         return;
     }
 
     // Check if we've exceeded the maximum POST size
     if (total_bytes > max_post_size) {
-        // TODO: Better error notification
-        alert("The provided files exceed maximum total size.")
+        showDialog('Error', 'The provided files exceed maximum total size.')
         return;
     }
 
@@ -255,19 +276,16 @@ document.getElementById('uploads').addEventListener('submit', async (ev) => {
             updateTotals();
             upload_button.disabled = false;
             upload_button.innerHTML = 'Upload Assets';
-            // TODO: Better status notification
-            alert('The submission was accepted');
+            showDialog('Success', 'The files have been submitted to the moderation queue.');
         }
         else {
             upload_button.disabled = false;
             upload_button.innerHTML = 'Upload Assets';
-            // TODO: Better status notification
-            alert('The submission was rejected');
+            showDialog('Error', data.errors);
         }
     }
     // Otherwise show an error
     else {
-        // TODO: Better error notification
-        alert('Failed to send the request');
+        showDialog('Error', 'A server error has occurred');
     }
 });
