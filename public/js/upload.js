@@ -237,7 +237,7 @@ document.getElementById('uploads').addEventListener('submit', async (ev) => {
     const data = new FormData(ev.target);
     const response = await fetch(ev.target.action, {
         method: 'POST',
-        data
+        body: data
     });
 
     // If we received a successful response from the server, process it
