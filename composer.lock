@@ -4,8 +4,88 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "567108358be3ad2515785c4d8448d5dc",
+    "content-hash": "41c936bf78a9bc7e6031934526585fcb",
     "packages": [
+        {
+            "name": "composer/spdx-licenses",
+            "version": "1.5.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/composer/spdx-licenses.git",
+                "reference": "c848241796da2abf65837d51dce1fae55a960149"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/composer/spdx-licenses/zipball/c848241796da2abf65837d51dce1fae55a960149",
+                "reference": "c848241796da2abf65837d51dce1fae55a960149",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^5.3.2 || ^7.0 || ^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^0.12.55",
+                "symfony/phpunit-bridge": "^4.2 || ^5"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "1.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Composer\\Spdx\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nils Adermann",
+                    "email": "naderman@naderman.de",
+                    "homepage": "http://www.naderman.de"
+                },
+                {
+                    "name": "Jordi Boggiano",
+                    "email": "j.boggiano@seld.be",
+                    "homepage": "http://seld.be"
+                },
+                {
+                    "name": "Rob Bast",
+                    "email": "rob.bast@gmail.com",
+                    "homepage": "http://robbast.nl"
+                }
+            ],
+            "description": "SPDX licenses list and validation library.",
+            "keywords": [
+                "license",
+                "spdx",
+                "validator"
+            ],
+            "support": {
+                "irc": "irc://irc.freenode.org/composer",
+                "issues": "https://github.com/composer/spdx-licenses/issues",
+                "source": "https://github.com/composer/spdx-licenses/tree/1.5.7"
+            },
+            "funding": [
+                {
+                    "url": "https://packagist.com",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/composer",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/composer/composer",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2022-05-23T07:37:50+00:00"
+        },
         {
             "name": "dflydev/dot-access-data",
             "version": "v3.0.2",
@@ -291,12 +371,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/nette/utils.git",
-                "reference": "c67c9f33ab9b3026709c7e606d93f7044678f8df"
+                "reference": "cead6637226456b35e1175cc53797dd585d85545"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nette/utils/zipball/c67c9f33ab9b3026709c7e606d93f7044678f8df",
-                "reference": "c67c9f33ab9b3026709c7e606d93f7044678f8df",
+                "url": "https://api.github.com/repos/nette/utils/zipball/cead6637226456b35e1175cc53797dd585d85545",
+                "reference": "cead6637226456b35e1175cc53797dd585d85545",
                 "shasum": ""
             },
             "require": {
@@ -369,7 +449,7 @@
                 "issues": "https://github.com/nette/utils/issues",
                 "source": "https://github.com/nette/utils/tree/v4.0.2"
             },
-            "time": "2023-09-19T10:10:47+00:00"
+            "time": "2023-09-19T11:58:07+00:00"
         },
         {
             "name": "nikic/fast-route",

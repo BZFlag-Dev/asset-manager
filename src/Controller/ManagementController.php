@@ -23,6 +23,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Database\DatabaseInterface;
+use Composer\Spdx\SpdxLicenses;
 use League\Config\Configuration;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -128,6 +129,9 @@ class ManagementController
 
   public function upload(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config): ResponseInterface
   {
+    // License information
+    $spdx = new SpdxLicenses();
+
     if ($request->getMethod() == 'GET') {
       $convertToBytes = function ($size) {
         if (str_ends_with($size, 'G')) {
@@ -148,8 +152,33 @@ class ManagementController
       $upload_config['max_post_size'] = min($upload_config['max_file_size'] * $upload_config['max_file_count'], $convertToBytes(ini_get('post_max_size')));
       $upload_config['accept'] = ".png";
 
+      $licenses = [
+        'popular' => array_fill_keys($upload_config['licenses']['popular'], ''),
+        'common' => array_fill_keys($upload_config['licenses']['common'], ''),
+        'other' => []
+      ];
+
+      foreach($spdx->getLicenses() as $license) {
+        // If this license id is deprecated, skip it
+        if ($license[3] === true) {
+          continue;
+        }
+
+        // If it's a popular or common license, fill in the name
+        if (array_key_exists($license[0], $licenses['popular'])) {
+          $licenses['popular'][$license[0]] = $license[1];
+        } elseif (array_key_exists($license[0], $licenses['common'])) {
+          $licenses['common'][$license[0]] = $license[1];
+        }
+        // Otherwise, if it's an OSI-approved license, put it under Other
+        elseif ($upload_config['licenses']['allow_other_osi'] && $license[2] === true) {
+          $licenses['other'][$license[0]] = $license[1];
+        }
+      }
+
       return $twig->render($response, 'upload.html.twig', [
-        'upload_config' => $upload_config
+        'upload_config' => $upload_config,
+        'licenses' => $licenses
       ]);
     } elseif ($request->getMethod() == 'POST') {
       // TODO: Actually process the files/data

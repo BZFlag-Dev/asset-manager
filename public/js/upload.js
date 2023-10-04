@@ -66,7 +66,7 @@ function updateLicense(ev) {
     // Loop through all the custom license elements in for this file
     ev.target.closest('.upload').querySelectorAll('.custom-license').forEach((el) => {
         // If it's 255, that's a custom license, so show this
-        if (ev.target.value === '255')
+        if (ev.target.value === 'Other')
             el.classList.remove('d-none');
         else
             el.classList.add('d-none');
@@ -81,13 +81,13 @@ function validateLicense(ev) {
     const license_selector = upload_container.querySelector('.license-select');
 
     // If the license is set to "Other OSI-Approved License", verify that at least name, and then URL or text is provided
-    if (license_selector.value === '255') {
+    if (license_selector.value === 'Other') {
         if (upload_container.querySelector('.license-name').value.length === 0) {
-            license_selector.setCustomValidity('When using another OSI-approved license, the license name must be provided.');
+            license_selector.setCustomValidity('When using another approved license, the license name must be provided.');
             return;
         }
         if (upload_container.querySelector('.license-url').value.length === 0 && upload_container.querySelector('.license-text').value.length === 0) {
-            license_selector.setCustomValidity('When using another OSI-approved license, then license URL or text must be provided.');
+            license_selector.setCustomValidity('When using another approved license, the license URL or text must be provided.');
             return;
         }
     }
@@ -127,6 +127,7 @@ function showDialog(title, message) {
 
 const container = document.getElementById('file_list');
 const template = document.getElementById('file_template');
+const upload_form = document.getElementById('uploads');
 const new_files = document.getElementById('new_files');
 
 // Upload limit summary elements and counters
@@ -173,6 +174,13 @@ setInvalidMessage('#first_name', 'Your first name must be provided.');
 setInvalidMessage('#last_name', 'Your last name must be provided.');
 setInvalidMessage('#new_files', 'At least one file must be provided.');
 setInvalidMessage('#agree_terms', 'All images must comply with the Terms of Service before they may be uploaded.');
+
+const sol = document.getElementById('show_other_licenses');
+if (sol) {
+    sol.addEventListener('change', function(ev) {
+        upload_form.classList.toggle('hide-other-licenses', !ev.target.checked);
+    });
+}
 
 new_files.addEventListener('change', function(ev) {
     if (ev.target.tagName === 'INPUT' && ev.target.type === 'file') {
@@ -242,7 +250,7 @@ new_files.addEventListener('change', function(ev) {
     }
 });
 
-document.getElementById('uploads').addEventListener('submit', async (ev) => {
+upload_form.addEventListener('submit', async (ev) => {
     // Prevent the form from submitting normally
     ev.preventDefault();
 
@@ -281,7 +289,6 @@ document.getElementById('uploads').addEventListener('submit', async (ev) => {
 
         if (data.success) {
             // Reset the form
-            ev.target.classList.remove('was-validated');
             document.getElementById('agree_terms').checked = false;
             container.innerHTML = '';
             total_files = 0;

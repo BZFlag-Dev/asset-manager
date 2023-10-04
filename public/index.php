@@ -76,10 +76,22 @@ $container->set(Configuration::class, function () {
       'upload' => Expect::structure([
         'max_file_size' => Expect::int(2 * 1024 * 1024)->min(512 * 1024),
         'max_file_count' => Expect::int(8)->min(1)->max(20),
-        'licenses' => Expect::listOf(Expect::structure([
-          'name' => Expect::string()->required(),
-          'url' => Expect::string()->required()
-        ]))->required()
+        'licenses' => Expect::structure([
+          // A short list of popular licenses
+          'popular' => Expect::listOf(Expect::string())
+            ->default(['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-3.0', 'CC-BY-SA-3.0', 'CC0-1.0', 'LGPL-2.1-only', 'MPL-2.0', 'MIT'])
+            ->mergeDefaults(false),
+          // A list of less popular asset licenses, but still popular in open-source
+          'common' => Expect::listOf(Expect::string())
+            ->default(['GPL-2.0-only', 'GPL-2.0-or-later', 'GPL-3.0-only', 'GPL-3.0-or-later', 'LGPL-2.0-only', 'LGPL-2.0-or-later',
+              'LGPL-2.1-or-later', 'LGPL-3.0-only', 'LGPL-3.0-or-later', 'MPL-1.0', 'MPL-1.1', 'BSD-3-Clause',
+              'BSD-2-Clause', 'AGPL-3.0-only', 'AGPL-3.0-or-later'])
+            ->mergeDefaults(false),
+          // Allow specifying an unlisted license by providing the name, and the URL or text
+          'allow_other' => Expect::bool(true),
+          // Allow showing all other OSI-approved licenses that weren't in the 'popular' or 'common' sections above
+          'allow_other_osi' => Expect::bool(false)
+        ])
       ])
     ]),
     'email' => Expect::structure([

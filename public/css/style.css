@@ -22,3 +22,7 @@ body {
 .file_metadata {
     margin-left: 144px;
 }
+
+.hide-other-licenses .other-licenses {
+    display: none;
+}

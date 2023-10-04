@@ -21,7 +21,8 @@
         "nyholm/psr7-server": "^1.0",
         "slim/twig-view": "dev-fixbasepath",
         "php-di/slim-bridge": "^3.4",
-        "league/config": "^1.2"
+        "league/config": "^1.2",
+        "composer/spdx-licenses": "^1.5"
     },
     "suggest": {
         "ext-sqlite3": "*"
