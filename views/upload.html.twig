@@ -33,7 +33,7 @@
 
         <template id="file_template">
         <div class="upload mb-3 pb-3 border-bottom">
-            <input type="file" name="uploads[][file]" class="d-none" accept="{{ upload_config.accept }}">
+            <input type="file" name="assets[][file]" class="d-none" accept="{{ upload_config.accept }}">
             <div class="row mb-3">
                 <div class="col me-3 position-relative">
                     <h3>File Information</h3>
@@ -49,16 +49,16 @@
                 <div class="col">
                     <h3>Source Information</h3>
                     <label class="form-label">Author Name:</label>
-                    <input type="text" class="form-control" name="uploads[][author]" required>
+                    <input type="text" class="form-control" name="assets[][author]" required>
 
                     <label class="form-label">Source URL:</label>
-                    <input type="text" class="form-control" name="uploads[][source_url]">
+                    <input type="text" class="form-control" name="assets[][source_url]">
                 </div>
             </div>
             <div class="row">
                 <div class="col">
                     <label class="form-label">License for this file:</label>
-                    <select class="form-select license-select" name="uploads[][license]" required>
+                    <select class="form-select license-select" name="assets[][license]" required>
                         <option value="">Select a license</option>
                         <optgroup label="Popular Licenses">
                         {% for id, name in licenses.popular %}
@@ -82,15 +82,15 @@
 
                     <div class="custom-license d-none">
                         <label class="form-label">License Name:</label>
-                        <input type="text" class="form-control license-name" name="uploads[][license_name]">
+                        <input type="text" class="form-control license-name" name="assets[][license_name]">
 
                         <label class="form-label">License URL:</label>
-                        <input type="text" class="form-control license-url" name="uploads[][license_url]">
+                        <input type="text" class="form-control license-url" name="assets[][license_url]">
                     </div>
                 </div>
                 <div class="col custom-license d-none">
                     <label class="form-label">License Text:</label>
-                    <textarea class="form-control license-text" name="uploads[][license_text]" rows="8"></textarea>
+                    <textarea class="form-control license-text" name="assets[][license_text]" rows="8"></textarea>
                 </div>
             </div>
         </div>

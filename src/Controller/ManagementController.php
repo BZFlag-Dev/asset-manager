@@ -27,6 +27,7 @@ use Composer\Spdx\SpdxLicenses;
 use League\Config\Configuration;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Respect\Validation\Validator as v;
 use Slim\App;
 use Slim\Views\Twig;
 
@@ -127,23 +128,29 @@ class ManagementController
     ]);
   }
 
-  public function upload(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config): ResponseInterface
+  public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config): ResponseInterface
   {
+    $convertToBytes = function ($size) {
+      if (str_ends_with($size, 'G')) {
+        return (int)$size * 1024 * 1024 * 1024;
+      } elseif (str_ends_with($size, 'M')) {
+        return (int)$size * 1024 * 1024;
+      } elseif (str_ends_with($size, 'K')) {
+        return (int)$size * 1024;
+      } else {
+        return (int)$size;
+      }
+    };
+
     // License information
     $spdx = new SpdxLicenses();
 
     if ($request->getMethod() == 'GET') {
-      $convertToBytes = function ($size) {
-        if (str_ends_with($size, 'G')) {
-          return (int)$size * 1024 * 1024 * 1024;
-        } elseif (str_ends_with($size, 'M')) {
-          return (int)$size * 1024 * 1024;
-        } elseif (str_ends_with($size, 'K')) {
-          return (int)$size * 1024;
-        } else {
-          return (int)$size;
-        }
-      };
+      if (!isset($_SESSION['username'])) {
+        return $response
+          ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('home'))
+          ->withStatus(302);
+      }
 
       $upload_config = $config->get('asset.upload');
       $upload_config['max_file_size'] = min($upload_config['max_file_size'], $convertToBytes(ini_get('upload_max_filesize')));
@@ -181,10 +188,98 @@ class ManagementController
         'licenses' => $licenses
       ]);
     } elseif ($request->getMethod() == 'POST') {
+      $writeErrors = function (ResponseInterface $response, array $errors) {
+        $response->getBody()->write(json_encode([
+          'success' => false,
+          'errors' => $errors
+        ]));
+        return $response
+          ->withHeader('Content-Type', 'application/json');
+      };
+
+      // If we don't have a valid session, throw an error back
+      if (!isset($_SESSION['username'])) {
+        return $writeErrors($response, [
+          'User is not logged in or session has expired. Please log in and try again.'
+        ]);
+      }
+
+      $data = $request->getParsedBody();
+
+      // Check that we have the 'success' hidden field. If we don't have this, it can indicate that a PHP upload
+      // limit has been exceeded.
+      if (!isset($data['success']) || $data['success'] !== '1') {
+        return $writeErrors($response, [
+          'The form submission was invalid. An upload limit may have been exceeded.'
+        ]);
+      }
+
+      // Start tracking errors
+      $errors = [];
+
+      // Let's check the uploaded files
+      $files = $request->getUploadedFiles();
+
+      // Verify we have at least one file that was uploaded
+      if (!isset($files['assets']) || sizeof($files['assets']) < 1) {
+        return $writeErrors($response, [
+          'No files were uploaded'
+        ]);
+      }
+
+      foreach($files['assets'] as $index => $upload) {
+        $filename = $upload['file']->getClientFilename();
+
+        // Check the error status first
+        $error = $upload['file']->getError();
+        if ($error != UPLOAD_ERR_OK) {
+          $errors[] = match ($error) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file exceeded the maximum size: ' . $filename,
+            UPLOAD_ERR_PARTIAL, UPLOAD_ERR_NO_FILE => 'The file was not uploaded completely: ' . $filename,
+            UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE, UPLOAD_ERR_EXTENSION => 'A server error occurred when writing the temporary file: ' . $filename,
+            default => 'An unknown error occurred: ' . $filename,
+          };
+
+          continue;
+        }
+
+        // Check the mime type and file extension
+        $tmp_path = $upload['file']->getStream()->getMetadata('uri');
+        $mime_type = mime_content_type($tmp_path);
+        $ext_start = strrpos($filename, '.');
+        // Verify we have an extension
+        if ($ext_start === false || strlen($filename) === $ext_start + 1) {
+          $errors[] = 'Missing extension on file '.$filename;
+          continue;
+        }
+        $extension = substr($filename, $ext_start+1);
+
+        // TODO: Add a configuration array or database tables to store valid options
+        if ($mime_type !== 'image/png' || $extension !== 'png') {
+          $errors[] = 'Invalid mime type or file extension on file '.$filename;
+          continue;
+        }
+
+        // Verify the file size does not exceed the limit
+        $size = $upload['file']->getSize();
+        if ($size > min($config->get('asset.upload.max_file_size'), $convertToBytes(ini_get('upload_max_filesize')))) {
+          $errors[] = 'Maximum file size exceeded for file '.$filename;
+          continue;
+        }
+
+        // Verify the other form data exists for this file
+        if (!isset($data['assets'][$index]) || !is_array($data['assets'][$index])) {
+          $errors[] = 'Missing asset information for file '.$filename;
+          continue;
+        }
+      if (sizeof($errors) > 0) {
+        return $writeErrors($response, $errors);
+      }
+
       // TODO: Actually process the files/data
       sleep(2);
       $response->getBody()->write(json_encode([
-        'success' => false
+        'success' => true,
       ]));
       return $response
         ->withHeader('Content-Type', 'application/json');

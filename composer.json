@@ -22,6 +22,8 @@
         "slim/twig-view": "dev-fixbasepath",
         "php-di/slim-bridge": "^3.4",
         "league/config": "^1.2",
+        "ext-fileinfo": "*",
+        "respect/validation": "^2.2",
         "composer/spdx-licenses": "^1.5"
     },
     "suggest": {
