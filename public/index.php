@@ -52,8 +52,10 @@ $container->set(Configuration::class, function () {
       'path' => Expect::string(dirname(__DIR__).'/var/data/db.sqlite3')
     ]),
     'site' => Expect::structure([
+        // The name of the game that these assets are being hosted for
+        'game_name' => Expect::string('BZFlag'),
         // Site title (used for the page header and the page title)
-        'title' => Expect::string("Asset Manager"),
+        'title' => Expect::string('Asset Manager'),
         // Base path
         'base_path' => Expect::string('/manage'),
         // Content takedown requests
@@ -126,6 +128,7 @@ $container->set(Twig::class, function (Configuration $config) {
     $twig->offsetSet('is_admin', $_SESSION['is_admin']);
   }
 
+  $twig->offsetSet('game_name', $config->get('site.game_name'));
   $twig->offsetSet('site_title', $config->get('site.title'));
 
   return $twig;
