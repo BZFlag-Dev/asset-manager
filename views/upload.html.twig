@@ -33,7 +33,7 @@
 
         <template id="file_template">
         <div class="upload mb-3 pb-3 border-bottom">
-            <input type="file" name="assets[][file]" class="d-none" accept="{{ upload_config.accept }}">
+            <input type="file" name="assets[%ASSET_INDEX%][file]" class="d-none" accept="{{ upload_config.accept }}">
             <div class="row mb-3">
                 <div class="col me-3 position-relative">
                     <h3>File Information</h3>
@@ -48,17 +48,17 @@
                 </div>
                 <div class="col">
                     <h3>Source Information</h3>
-                    <label class="form-label">Author Name:</label>
-                    <input type="text" class="form-control" name="assets[][author]" required>
+                    <label class="form-label" for="author">Author Name:</label>
+                    <input type="text" class="form-control" id="author" name="assets[%ASSET_INDEX%][author]" required>
 
-                    <label class="form-label">Source URL:</label>
-                    <input type="text" class="form-control" name="assets[][source_url]">
+                    <label class="form-label" for="source_url">Source URL:</label>
+                    <input type="text" class="form-control" id="source_url" name="assets[%ASSET_INDEX%][source_url]">
                 </div>
             </div>
             <div class="row">
                 <div class="col">
-                    <label class="form-label">License for this file:</label>
-                    <select class="form-select license-select" name="assets[][license]" required>
+                    <label class="form-label" for="license">License for this file:</label>
+                    <select class="form-select license-select" id="license" name="assets[%ASSET_INDEX%][license]" required>
                         <option value="">Select a license</option>
                         <optgroup label="Popular Licenses">
                         {% for id, name in licenses.popular %}
@@ -81,16 +81,16 @@
                     </select>
 
                     <div class="custom-license d-none">
-                        <label class="form-label">License Name:</label>
-                        <input type="text" class="form-control license-name" name="assets[][license_name]">
+                        <label class="form-label" for="license_name">License Name:</label>
+                        <input type="text" class="form-control license-name" id="license_name" name="assets[%ASSET_INDEX%][license_name]">
 
-                        <label class="form-label">License URL:</label>
-                        <input type="text" class="form-control license-url" name="assets[][license_url]">
+                        <label class="form-label" for="license_url">License URL:</label>
+                        <input type="text" class="form-control license-url" id="license_url" name="assets[%ASSET_INDEX%][license_url]">
                     </div>
                 </div>
                 <div class="col custom-license d-none">
-                    <label class="form-label">License Text:</label>
-                    <textarea class="form-control license-text" name="assets[][license_text]" rows="8"></textarea>
+                    <label class="form-label" for="license_text">License Text:</label>
+                    <textarea class="form-control license-text" id="license_text" name="assets[%ASSET_INDEX%][license_text]" rows="8"></textarea>
                 </div>
             </div>
         </div>
@@ -106,7 +106,7 @@
         <div class="row mb-5">
             <div class="col">
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="show_other_licenses">
+                    <input type="checkbox" class="form-check-input" id="show_other_licenses">
                     <label class="form-check-label" for="show_other_licenses">Show other OSI-approved licenses</label>
                 </div>
             </div>

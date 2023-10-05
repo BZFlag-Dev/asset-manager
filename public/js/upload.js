@@ -182,6 +182,8 @@ if (sol) {
     });
 }
 
+// Used for the form values to group the information together
+let asset_index = 0;
 new_files.addEventListener('change', function(ev) {
     if (ev.target.tagName === 'INPUT' && ev.target.type === 'file') {
         const fragment = document.createDocumentFragment();
@@ -195,8 +197,6 @@ new_files.addEventListener('change', function(ev) {
 
             // Clone our template
             const clonedTemplate = template.content.cloneNode(true);
-
-            // TODO: Add 'for' attribute to labels and 'id' attributes to input/textarea
 
             // Move this file from our multi-selector file input to a hidden single file input
             let dt = new DataTransfer();
@@ -226,6 +226,16 @@ new_files.addEventListener('change', function(ev) {
                     }
                 });
             }
+
+            // Add the asset index to the label/input/select/textarea and replace %ASSET_INDEX% with the current index
+            clonedTemplate.querySelectorAll('label').forEach((el) => {
+                el.htmlFor = el.htmlFor + '_' + asset_index;
+            });
+            clonedTemplate.querySelectorAll('input, select, textarea').forEach((el) => {
+                el.id = el.id + '_' + asset_index;
+                el.name = el.name.replace('%ASSET_INDEX%', asset_index);
+            });
+            asset_index++;
 
             // Attach events
             clonedTemplate.querySelector('.remove-file').addEventListener('click', removeFile);

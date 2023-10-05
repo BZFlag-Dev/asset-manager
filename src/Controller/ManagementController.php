@@ -128,7 +128,7 @@ class ManagementController
     ]);
   }
 
-  public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config): ResponseInterface
+  public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, SpdxLicenses $spdx): ResponseInterface
   {
     $convertToBytes = function ($size) {
       if (str_ends_with($size, 'G')) {
@@ -142,8 +142,10 @@ class ManagementController
       }
     };
 
-    // License information
-    $spdx = new SpdxLicenses();
+    // Fetch the upload configuration options and clamp values to the PHP maximums
+    $upload_config = $config->get('asset.upload');
+    $upload_config['max_file_size'] = min($upload_config['max_file_size'], $convertToBytes(ini_get('upload_max_filesize')));
+    $upload_config['max_file_count'] = min($upload_config['max_file_count'], ini_get('max_file_uploads'));
 
     if ($request->getMethod() == 'GET') {
       if (!isset($_SESSION['username'])) {
@@ -152,11 +154,9 @@ class ManagementController
           ->withStatus(302);
       }
 
-      $upload_config = $config->get('asset.upload');
-      $upload_config['max_file_size'] = min($upload_config['max_file_size'], $convertToBytes(ini_get('upload_max_filesize')));
-      $upload_config['max_file_count'] = min($upload_config['max_file_count'], ini_get('max_file_uploads'));
       // TODO: Check if we need to factor in a buffer to contain files AND other form data within this max post size
       $upload_config['max_post_size'] = min($upload_config['max_file_size'] * $upload_config['max_file_count'], $convertToBytes(ini_get('post_max_size')));
+      // TODO: Adjust this based on the allowed types
       $upload_config['accept'] = ".png";
 
       $licenses = [
@@ -204,6 +204,7 @@ class ManagementController
         ]);
       }
 
+      // Grab a copy of the form data
       $data = $request->getParsedBody();
 
       // Check that we have the 'success' hidden field. If we don't have this, it can indicate that a PHP upload
@@ -213,9 +214,6 @@ class ManagementController
           'The form submission was invalid. An upload limit may have been exceeded.'
         ]);
       }
-
-      // Start tracking errors
-      $errors = [];
 
       // Let's check the uploaded files
       $files = $request->getUploadedFiles();
@@ -227,17 +225,20 @@ class ManagementController
         ]);
       }
 
+      // Start tracking errors
+      $errors = [];
+
       foreach($files['assets'] as $index => $upload) {
         $filename = $upload['file']->getClientFilename();
 
         // Check the error status first
         $error = $upload['file']->getError();
         if ($error != UPLOAD_ERR_OK) {
-          $errors[] = match ($error) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file exceeded the maximum size: ' . $filename,
-            UPLOAD_ERR_PARTIAL, UPLOAD_ERR_NO_FILE => 'The file was not uploaded completely: ' . $filename,
-            UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE, UPLOAD_ERR_EXTENSION => 'A server error occurred when writing the temporary file: ' . $filename,
-            default => 'An unknown error occurred: ' . $filename,
+          $errors['file'][$index][] = match ($error) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file exceeded the maximum size',
+            UPLOAD_ERR_PARTIAL, UPLOAD_ERR_NO_FILE => 'The file was not uploaded completely',
+            UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE, UPLOAD_ERR_EXTENSION => 'The file could not be written due to a server error',
+            default => 'The upload failed for an unknown reason',
           };
 
           continue;
@@ -249,35 +250,85 @@ class ManagementController
         $ext_start = strrpos($filename, '.');
         // Verify we have an extension
         if ($ext_start === false || strlen($filename) === $ext_start + 1) {
-          $errors[] = 'Missing extension on file '.$filename;
+          $errors['file'][$index][] = 'The file extension is missing';
           continue;
         }
         $extension = substr($filename, $ext_start+1);
 
         // TODO: Add a configuration array or database tables to store valid options
         if ($mime_type !== 'image/png' || $extension !== 'png') {
-          $errors[] = 'Invalid mime type or file extension on file '.$filename;
+          $errors['file'][$index][] = 'Invalid MIME type or file extension';
           continue;
         }
 
         // Verify the file size does not exceed the limit
         $size = $upload['file']->getSize();
         if ($size > min($config->get('asset.upload.max_file_size'), $convertToBytes(ini_get('upload_max_filesize')))) {
-          $errors[] = 'Maximum file size exceeded for file '.$filename;
+          $errors['file'][$index][] = 'Maximum file size exceeded';
           continue;
         }
 
         // Verify the other form data exists for this file
         if (!isset($data['assets'][$index]) || !is_array($data['assets'][$index])) {
-          $errors[] = 'Missing asset information for file '.$filename;
+          $errors['file'][$index][] = 'Asset information is missing';
           continue;
         }
+
+        // Grab a short reference to this asset's information
+        $d = &$data['assets'][$index];
+
+        // Require an author name
+        if (!v::notEmpty()->validate($d['author'])) {
+          $errors['file'][$index][] = 'Missing author name';
+        }
+
+        // Verify the source URL, if provided, is actually a URL
+        if (!v::optional(v::url())->validate($d['source_url'])) {
+          $errors['file'][$index][] = 'Source URL was not a valid URL';
+        }
+
+        // Require a license
+        if (!v::notEmpty()->validate($d['license'])) {
+          $errors['file'][$index][] = 'Missing license';
+        }
+        // If we allow other licenses, check if they provided the name, and either the URL or text
+        else if ($d['license'] === 'Other') {
+          if (!$upload_config['licenses']['allow_other']) {
+            $errors['file'][$index][] = 'Other licenses are not allowed';
+          }
+          // Verify that the license name is provided
+          if (!v::notEmpty()->validate($d['license_name'])) {
+            $errors['file'][$index][] = 'Missing license name';
+          }
+
+          // Verify either the license URL or text are provided
+          if (!(v::optional(v::url()))->validate($d['license_url'])) {
+            $errors['file'][$index][] = 'License URL was not a valid URL';
+          }
+          else if (!(v::notEmpty()->validate($d['license_url']) || v::notEmpty()->validate($d['license_text']))) {
+            $errors['file'][$index][] = 'Missing license URL or text';
+          }
+        }
+        else {
+          // Check if it's a popular or common license, or, if enabled, another OSI-approved license
+          if (
+            !in_array($d['license'], $upload_config['licenses']['popular']) &&
+            !in_array($d['license'], $upload_config['licenses']['common']) &&
+            !($upload_config['licenses']['allow_other_osi'] && $spdx->validate($d['license']) && $spdx->isOsiApprovedByIdentifier($d['license']))
+          ) {
+            $errors['file'][$index][] = 'Invalid license selected';
+          }
+        }
+      }
+
+      // If we had any errors, return them to the user
       if (sizeof($errors) > 0) {
         return $writeErrors($response, $errors);
       }
 
-      // TODO: Actually process the files/data
+      // TODO: Actually process the files/data and put them into the queue
       sleep(2);
+
       $response->getBody()->write(json_encode([
         'success' => true,
       ]));
