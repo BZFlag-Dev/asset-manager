@@ -107,9 +107,11 @@ class ManagementController
       ]);
     }
 
-    return $response
-        ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('home'))
-        ->withStatus(302);
+    return $twig->render($response, 'login.html.twig', [
+      'username' => $_SESSION['username'],
+      'bzid' => $_SESSION['bzid'],
+      'is_admin' => $_SESSION['is_admin']
+    ]);
   }
 
   public function logout(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig): ResponseInterface
