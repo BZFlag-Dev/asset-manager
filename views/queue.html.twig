@@ -1,0 +1,111 @@
+{% extends "layout.html.twig" %}
+
+{% from 'macros.twig' import bytesToSize %}
+
+{% block content %}
+    <form action="{{ url_for('queue') }}" id="uploads" novalidate method="post" enctype="multipart/form-data">
+        {% for asset in queue %}
+        <div class="mb-3 pb-3">
+            <div class="row mb-3">
+                <div class="col me-3 position-relative">
+                    <h3>File Information</h3>
+                    <canvas class="file_preview d-none position-absolute" width="512" height="512" id="preview_{{ asset.id }}"></canvas>
+                    <div class="file_metadata">
+                        <p>
+                            <strong>Filename:</strong><br>
+                            <span class="font-monospace bg-dark-subtle p-1">{{ asset.filename | escape }}</span>
+                        </p>
+                        <p>
+                            <strong>File size:</strong> {{ bytesToSize(asset.file_size) }}
+                        </p>
+                    </div>
+                </div>
+                <div class="col">
+                    <h3>Source Information</h3>
+
+                    <p>
+                        <strong>Author Name:</strong><br>
+                        <span>{{ asset.author | escape }}</span>
+                    </p>
+                    {% if asset.source_url %}
+                    <p>
+                        <strong>Source URL:</strong><br>
+                        <span><a href="{{ asset.source_url | escape('html_attr') }}">{{ asset.source_url | escape }}</a></span>
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="col">
+                    <h3>Uploader Information</h3>
+
+                    <p>
+                        <strong>Uploader:</strong><br>
+                        {{ asset.username }} ({{ asset.bzid }})
+                    </p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <h3>License Information</h3>
+                    <p>
+                        <strong>License Name:</strong><br>
+                        <span>{% if asset.license_id == 'Other' %}Other - {% endif %}{{ asset.license_name | escape }}</span>
+                    <p>
+
+                    {% if asset.license_url %}
+                    <p>
+                        <strong>License URL:</strong><br>
+                        <span><a href="{{ asset.license_url | escape('html_attr') }}" target="_blank" rel="noreferrer">{{ asset.license_url | escape }}</a></span>
+                    </p>
+                    {% endif %}
+                    {% if asset.license_text %}
+                    <p>
+                        <strong>License Text:</strong><br>
+                        <code><pre class="pre-wrap">{{ asset.license_text | escape}}</pre></code>
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+            <div class="row">
+                <div class="col">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="review[{{ asset.id }}" id="review_{{ asset.id }}_nothing" value="" checked>
+                        <label class="form-check-label" for="review_{{ asset.id }}_nothing">Do Nothing</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="review[{{ asset.id }}" id="review_{{ asset.id }}_approve" value="approve">
+                        <label class="form-check-label text-success-emphasis" for="review_{{ asset.id }}_approve"><strong>Approve</strong></label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="review[{{ asset.id }}" id="review_{{ asset.id }}_request" value="request">
+                        <label class="form-check-label text-warning" for="review_{{ asset.id }}_request">Request Changes</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="review[{{ asset.id }}" id="review_{{ asset.id }}_reject" value="reject">
+                        <label class="form-check-label text-danger-emphasis" for="review_{{ asset.id }}_reject">Reject</label>
+                    </div>
+                </div>
+            </div>
+
+        <hr>
+        {% endfor %}
+
+        <div class="row">
+            <div class="col">
+                <button type="submit" class="btn btn-primary mt-3" id="btn_upload_assets">Submit Review</button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path() }}/js/preview.js"></script>
+<script src="{{ base_path() }}/js/queue.js"></script>
+<script>
+{% for asset in queue %}
+    {% if asset.mime_type starts with 'image/' %}
+    previewImage(document.getElementById('preview_{{ asset.id }}'), '{{ url_for('view', {'bzid': asset.bzid, 'queueid': asset.id, width: 256, height: 256}) | escape('js') }}');
+    {% endif %}
+{% endfor %}
+</script>
+{% endblock %}

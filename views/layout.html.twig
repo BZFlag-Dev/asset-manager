@@ -28,7 +28,7 @@
                     </li>
                     {% if is_admin %}
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Queue</a>
+                        <a class="nav-link{% if is_current_url('queue') %} active" aria-current="page{% endif %}" href="{{ url_for('queue') }}">Queue</a>
                     </li>
                     {% endif %}
                     <li class="nav-item">

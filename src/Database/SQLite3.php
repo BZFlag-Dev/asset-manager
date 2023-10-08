@@ -62,7 +62,7 @@ class SQLite3 implements DatabaseInterface
 
         // If this is a clean install, create the initial tables
         if ($version < 1) {
-          $this->db->query(/** @lang SQLite */ 'CREATE TABLE queue (id INTEGER PRIMARY KEY AUTOINCREMENT, bzid TEXT NOT NULL, username TEXT NOT NULL, email TEXT NOT NULL, filename TEXT NOT NULL, mime_type TEXT NOT NULL, author TEXT NOT NULL, source_url TEXT NOT NULL, license_id TEXT NOT NULL, license_name TEXT, license_url TEXT, license_text TEXT, UNIQUE(bzid, filename))');
+          $this->db->query(/** @lang SQLite */ 'CREATE TABLE queue (id INTEGER PRIMARY KEY AUTOINCREMENT, bzid TEXT NOT NULL, username TEXT NOT NULL, email TEXT NOT NULL, filename TEXT NOT NULL, file_size INTEGER NOT NULL, mime_type TEXT NOT NULL, author TEXT NOT NULL, source_url TEXT NOT NULL, license_id TEXT NOT NULL, license_name TEXT, license_url TEXT, license_text TEXT, UNIQUE(bzid, filename))');
         }
 
         // Update the user_version now that we've updated the schema
@@ -83,6 +83,11 @@ class SQLite3 implements DatabaseInterface
     } catch (PDOException $e) {
       throw new \Exception("Unable to enable foreign key integrity checks: ".$e->getMessage());
     }
+  }
+
+  public function queue_get(): array {
+    $query = $this->db->query(/** @lang SQLite */ 'SELECT * FROM queue');
+    return $query->fetchAll();
   }
 
   public function queue_get_by_bzid(string $bzid): ?array
@@ -109,8 +114,15 @@ class SQLite3 implements DatabaseInterface
 
   public function queue_add(array $data): ?int
   {
-    $stmt = $this->db->prepare(/** @lang SQLite */ 'INSERT INTO queue (bzid, username, email, filename, mime_type, author, source_url, license_id, license_name, license_url, license_text) VALUES (:bzid, :username, :email, :filename, :mime_type, :author, :source_url, :license_id, :license_name, :license_url, :license_text)');
+    $stmt = $this->db->prepare(/** @lang SQLite */ 'INSERT INTO queue (bzid, username, email, filename, file_size, mime_type, author, source_url, license_id, license_name, license_url, license_text) VALUES (:bzid, :username, :email, :filename, :file_size, :mime_type, :author, :source_url, :license_id, :license_name, :license_url, :license_text)');
     $stmt->execute($data);
     return (int)$this->db->lastInsertId();
+  }
+
+  public function queue_remove($id): bool
+  {
+    $stmt = $this->db->prepare(/** @lang SQLite */ 'DELETE FROM queue WHERE id = :id');
+    $stmt->execute(['id' => $id]);
+    return $stmt->rowCount() === 1;
   }
 }

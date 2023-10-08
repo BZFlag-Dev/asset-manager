@@ -171,7 +171,7 @@ $app->get('/login[/{token}/{username}]', [ManagementController::class, 'login'])
 $app->get('/logout', [ManagementController::class, 'logout'])->setName('logout');
 $app->get('/terms', [ManagementController::class, 'terms'])->setName('terms');
 $app->map(['GET', 'POST'], '/upload', [ManagementController::class, 'upload'])->setName('upload');
-
+$app->get('/queue', [ManagementController::class, 'queue'])->setName('queue');
 $app->get('/view/{bzid}/{queueid}[/{width}/{height}]', [AssetController::class, 'view'])->setName('view');
 
 // Let's go!

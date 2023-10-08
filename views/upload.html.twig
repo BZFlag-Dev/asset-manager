@@ -38,7 +38,6 @@
             <div class="row mb-3">
                 <div class="col me-3 position-relative">
                     <h3>File Information</h3>
-                    <!--<img class="file_image_preview float-start d-none pe-3 pb-3">-->
                     <canvas class="file_preview d-none position-absolute" width="512" height="512"></canvas>
                     <div class="file_metadata">
                         Filename:<br>
@@ -180,5 +179,6 @@
     const max_file_count = {{ upload_config.max_file_count }};
     const max_post_size = {{ upload_config.max_post_size }};
 </script>
+<script src="{{ base_path() }}/js/preview.js"></script>
 <script src="{{ base_path() }}/js/upload.js"></script>
 {% endblock %}

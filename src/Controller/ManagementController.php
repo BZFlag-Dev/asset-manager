@@ -321,8 +321,8 @@ class ManagementController
         }
 
         // Verify the file size does not exceed the limit
-        $size = $upload['file']->getSize();
-        if ($size > min($config->get('asset.upload.max_file_size'), $convertToBytes(ini_get('upload_max_filesize')))) {
+        $file_size = $upload['file']->getSize();
+        if ($file_size > min($config->get('asset.upload.max_file_size'), $convertToBytes(ini_get('upload_max_filesize')))) {
           $file_errors[$index][] = 'The maximum file size was exceeded.';
           continue;
         }
@@ -409,6 +409,7 @@ class ManagementController
               'username' => $_SESSION['username'],
               'email' => $data['uploader_email'],
               'filename' => $filename,
+              'file_size' => $file_size,
               'mime_type' => $mime_type,
               'author' => $d['author'],
               'source_url' => $d['source_url'],
@@ -441,5 +442,34 @@ class ManagementController
       return $response
         ->withHeader('Content-Type', 'application/json');
     }
+  }
+
+  public function queue(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
+  {
+    if (!isset($_SESSION['username']) || $_SESSION['is_admin'] !== true) {
+      return $response
+        ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('home'))
+        ->withStatus(302);
+    }
+
+    // TODO: Pagination
+
+    // Get all the items in the queue
+    $queue = $db->queue_get();
+
+    foreach($queue as &$asset) {
+      if ($asset['license_id'] !== 'Other') {
+        if ($spdx->validate($asset['license_id'])) {
+          $asset['license_name'] = $spdx->getLicenseByIdentifier($asset['license_id'])[0];
+        } else {
+          $asset['license_name'] = 'Unknown or invalid';
+        }
+      }
+
+  }
+
+    return $twig->render($response, 'queue.html.twig', [
+      'queue' => $queue
+    ]);
   }
 }
