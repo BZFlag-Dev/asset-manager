@@ -101,11 +101,14 @@ class AssetController
             ->withStatus(500);
         }
 
+        imagealphablending($thumbnail, false);
+        imagesavealpha($thumbnail, true);
+
         imagecopyresampled($thumbnail, $image, 0, 0, 0, 0, $width, $height, $info[0], $info[1]);
 
         ob_start();
-        if (imagejpeg($thumbnail)) {
-          $response = $response->withHeader('Content-Type', 'image/jpeg');
+        if (imageavif($thumbnail)) {
+          $response = $response->withHeader('Content-Type', 'image/avif');
           $response->getBody()->write(ob_get_contents());
         } else {
           $response->getBody()->write("500 Error encoding thumbnail");
