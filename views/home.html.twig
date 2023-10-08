@@ -17,17 +17,23 @@
                 <table class="table table-striped table-bordered mt-2 mb-0">
                 <thead>
                     <tr>
-                        <th scope="col">Thumbnail</th>
-                        <th scope="col">Author Information</th>
+                        <th scope="col">Preview</th>
+                        <th scope="col">File Information</th>
                     </tr>
                 </thead>
                 <tbody>
             {% endif %}
                     <tr>
-                        <td><img src="{{ url_for('view', {'bzid': item.bzid, 'queueid': item.id, width: 128, height: 128}) }}" alt="{{ item.filename }} by {{ item.author_name }}"></td>
+                        <td>
+                            {% if item.mime_type starts with 'image/' %}
+                            <img src="{{ url_for('view', {'bzid': item.bzid, 'queueid': item.id, width: 128, height: 128}) }}" alt="{{ item.filename }} by {{ item.author }}">
+                            {% else %}
+                            Preview unavailable for this file type
+                            {% endif %}
+                        </td>
                         <td>
                             <strong>Filename:</strong> {{ item.filename }}<br>
-                            <strong>Author Name:</strong> {{ item.author_name }}<br>
+                            <strong>Author Name:</strong> {{ item.author }}<br>
                             <strong>License:</strong> {{ item.license_name }}<br>
                             {% if item.license_url %}<strong>License URL:</strong> <a href="{{ item.license_url }}" target="_blank" rel="noopener">View License</a><br>{% endif %}
                             {% if item.license_text %}<strong>License Text:</strong>{{ item.license_text | nl2br }}{% endif %}

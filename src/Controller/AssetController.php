@@ -29,7 +29,7 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class AssetController
 {
-  public function view(ServerRequestInterface $request, ResponseInterface $response, Configuration $config, DatabaseInterface $db, $bzid, $queueid, int $width = 0, int $height = 0): ResponseInterface
+  public function view(ServerRequestInterface $request, ResponseInterface $response, Configuration $config, DatabaseInterface $db, string $bzid, int $queueid, int $width = 0, int $height = 0): ResponseInterface
   {
     if (empty($_SESSION['username'])) {
       $response->getBody()->write("401 Unauthorized");
@@ -59,9 +59,7 @@ class AssetController
         ->withStatus(404);
     }
 
-    // Once multiple image formats are supported, this could switch to
-    // using str_begins_with().
-    if ($asset['type'] == 'image/png') {
+    if (str_starts_with($asset['mime_type'], 'image/')) {
       // If either the width or the height are 0 or less, just send the original file
       if ($width <= 0 || $height <= 0) {
         $response = $response->withHeader('Content-Type', $asset['type']);
@@ -74,7 +72,7 @@ class AssetController
         if ($info === false) {
           $response->getBody()->write("500 Error Reading File");
           return $response
-            ->withStatus(404);
+            ->withStatus(500);
         }
 
         // Calculate the image ratios and
@@ -89,8 +87,19 @@ class AssetController
         }
 
         $thumbnail = imagecreatetruecolor($width, $height);
-        // TODO: Support other formats
-        $image = imagecreatefrompng($fullPath);
+        try {
+          $image = match ($asset['mime_type']) {
+            'image/png' => imagecreatefrompng($fullPath),
+            'image/jpeg' => imagecreatefromjpeg($fullPath),
+            'image/gif' => imagecreatefromgif($fullPath),
+            'image/avif' => imagecreatefromavif($fullPath),
+            'image/webp' => imagecreatefromwebp($fullPath),
+          };
+        } catch (\UnhandledMatchError $e) {
+          $response->getBody()->write('500 Error Reading Image');
+          return $response
+            ->withStatus(500);
+        }
 
         imagecopyresampled($thumbnail, $image, 0, 0, 0, 0, $width, $height, $info[0], $info[1]);
 

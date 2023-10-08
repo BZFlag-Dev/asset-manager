@@ -33,11 +33,20 @@ use Slim\Views\Twig;
 
 class ManagementController
 {
-  public function home(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, DatabaseInterface $db): ResponseInterface
+  public function home(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
   {
     $queue = null;
     if (!empty($_SESSION['bzid'])) {
       $queue = $db->queue_get_by_bzid($_SESSION['bzid']);
+      foreach($queue as &$asset) {
+        if ($asset['license_id'] !== 'Other') {
+          if ($spdx->validate($asset['license_id'])) {
+            $asset['license_name'] = $spdx->getLicenseByIdentifier($asset['license_id'])[0];
+          } else {
+            $asset['license_name'] = 'Unknown or invalid';
+          }
+        }
+      }
     }
 
     return $twig->render($response, 'home.html.twig', [
@@ -118,6 +127,7 @@ class ManagementController
   {
     // Clear the session and return to the homepage
     $_SESSION = [];
+    session_destroy();
     return $response
         ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('home'))
         ->withStatus(302);
@@ -130,7 +140,7 @@ class ManagementController
     ]);
   }
 
-  public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, SpdxLicenses $spdx): ResponseInterface
+  public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
   {
     $convertToBytes = function ($size) {
       if (str_ends_with($size, 'G')) {
@@ -382,6 +392,36 @@ class ManagementController
             $file_errors[$index][] = 'An invalid license was selected.';
           }
         }
+
+        // If we have no errors for this file, move it into the temporary directory and add it to the queue
+        if (!isset($file_errors[$index]) || sizeof($file_errors[$index]) === 0) {
+          try {
+            $upload['file']->moveTo($path_temp);
+          } catch (\InvalidArgumentException | \RuntimeException) {
+            // TODO: Log the error
+            $file_errors[$index][] = 'A server error occurred while moving the temporary file.';
+            continue;
+          }
+
+          try {
+            $db->queue_add([
+              'bzid' => $_SESSION['bzid'],
+              'username' => $_SESSION['username'],
+              'email' => $data['uploader_email'],
+              'filename' => $filename,
+              'mime_type' => $mime_type,
+              'author' => $d['author'],
+              'source_url' => $d['source_url'],
+              'license_id' => $d['license'],
+              'license_name' => $d['license_name'],
+              'license_url' => $d['license_url'],
+              'license_text' => $d['license_text']
+            ]);
+          } catch (\Exception $e) {
+            // TODO: Log the error
+            $file_errors[$index][] = 'A database error occurred while adding the file to the queue.';
+          }
+        }
       }
 
       // If we had any errors, return them to the user
@@ -394,9 +434,6 @@ class ManagementController
         return $response
           ->withHeader('Content-Type', 'application/json');
       }
-
-      // TODO: Actually process the files/data and put them into the queue
-      sleep(2);
 
       $response->getBody()->write(json_encode([
         'success' => true,

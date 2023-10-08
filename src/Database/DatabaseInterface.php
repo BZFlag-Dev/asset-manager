@@ -28,9 +28,11 @@ interface DatabaseInterface
 {
   public function __construct(Configuration $config);
 
-  //public function queue_get_by_id($id): ?array;
+  //public function queue_get_by_id(int $id): ?array;
 
-  public function queue_get_by_bzid($bzid): ?array;
+  public function queue_get_by_bzid(string $bzid): ?array;
 
-  public function queue_get_by_bzid_and_id($bzid, $id): ?array;
+  public function queue_get_by_bzid_and_id(string $bzid, int $id): ?array;
+
+  public function queue_add(array $data): ?int;
 }

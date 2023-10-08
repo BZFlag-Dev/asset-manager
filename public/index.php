@@ -137,7 +137,6 @@ $container->set(Twig::class, function (Configuration $config) {
     'auto_reload' => true
   ]);
 
-  //var_dump($_SESSION); exit;
   if (!empty($_SESSION['username'])) {
     $twig->offsetSet('username', $_SESSION['username']);
     $twig->offsetSet('bzid', $_SESSION['bzid']);

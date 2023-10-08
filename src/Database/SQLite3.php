@@ -49,7 +49,7 @@ class SQLite3 implements DatabaseInterface
       $stmt = $this->db->query(/** @lang SQLite */ "PRAGMA user_version");
       $version = (int)$stmt->fetchColumn();
     } catch (PDOException $e) {
-      die("Unable to check database version: ".$e->getMessage());
+      throw new \Exception("Unable to check database version: ".$e->getMessage());
     }
 
     if ($version < self::DATABASE_VERSION) {
@@ -62,7 +62,7 @@ class SQLite3 implements DatabaseInterface
 
         // If this is a clean install, create the initial tables
         if ($version < 1) {
-          $this->db->query(/** @lang SQLite */ 'CREATE TABLE queue (id INTEGER PRIMARY KEY, bzid TEXT NOT NULL, filename TEXT NOT NULL, type TEXT NOT NULL, author_name TEXT NOT NULL, license_name TEXT NOT NULL, license_url TEXT, license_text TEXT, UNIQUE(bzid, filename))');
+          $this->db->query(/** @lang SQLite */ 'CREATE TABLE queue (id INTEGER PRIMARY KEY AUTOINCREMENT, bzid TEXT NOT NULL, username TEXT NOT NULL, email TEXT NOT NULL, filename TEXT NOT NULL, mime_type TEXT NOT NULL, author TEXT NOT NULL, source_url TEXT NOT NULL, license_id TEXT NOT NULL, license_name TEXT, license_url TEXT, license_text TEXT, UNIQUE(bzid, filename))');
         }
 
         // Update the user_version now that we've updated the schema
@@ -73,8 +73,7 @@ class SQLite3 implements DatabaseInterface
       } catch (PDOException $e) {
         // Rollback the attempted upgrade
         $this->db->rollBack();
-        // TODO: Proper error handling/logging
-        die("Unable to create/upgrade the database: ".$e->getMessage());
+        throw new \Exception("Unable to create/upgrade the database: ".$e->getMessage());
       }
     }
 
@@ -82,38 +81,36 @@ class SQLite3 implements DatabaseInterface
       // Enable foreign key integrity checks
       $this->db->query(/** @lang SQLite */ 'PRAGMA foreign_keys=on');
     } catch (PDOException $e) {
-      // TODO: Proper error handling/logging
-      die("Unable to enable foreign key integrity checks: ".$e->getMessage());
+      throw new \Exception("Unable to enable foreign key integrity checks: ".$e->getMessage());
     }
   }
 
-  public function queue_get_by_bzid($bzid): ?array
+  public function queue_get_by_bzid(string $bzid): ?array
   {
-    try {
-      $stmt = $this->db->prepare(/** @lang SQLite */ "SELECT * FROM queue WHERE bzid = :bzid");
-      $stmt->execute(['bzid' => $bzid]);
-      $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-      if (sizeof($rows) > 0) {
-        return $rows;
-      }
-      return null;
-    } catch (PDOException $e) {
-      die($e->getMessage());
+    $stmt = $this->db->prepare(/** @lang SQLite */ "SELECT * FROM queue WHERE bzid = :bzid");
+    $stmt->execute(['bzid' => $bzid]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (sizeof($rows) > 0) {
+      return $rows;
     }
+    return null;
   }
 
-  public function queue_get_by_bzid_and_id($bzid, $id): ?array
+  public function queue_get_by_bzid_and_id(string $bzid, int $id): ?array
   {
-    try {
-      $stmt = $this->db->prepare(/** @lang SQLite */ "SELECT * FROM queue WHERE bzid = :bzid AND id = :id");
-      $stmt->execute(['bzid' => $bzid, 'id' => $id]);
-      $row = $stmt->fetch(PDO::FETCH_ASSOC);
-      if ($row !== false) {
-        return $row;
-      }
-      return null;
-    } catch (PDOException $e) {
-      die($e->getMessage());
+    $stmt = $this->db->prepare(/** @lang SQLite */ "SELECT * FROM queue WHERE bzid = :bzid AND id = :id");
+    $stmt->execute(['bzid' => $bzid, 'id' => $id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row !== false) {
+      return $row;
     }
+    return null;
+  }
+
+  public function queue_add(array $data): ?int
+  {
+    $stmt = $this->db->prepare(/** @lang SQLite */ 'INSERT INTO queue (bzid, username, email, filename, mime_type, author, source_url, license_id, license_name, license_url, license_text) VALUES (:bzid, :username, :email, :filename, :mime_type, :author, :source_url, :license_id, :license_name, :license_url, :license_text)');
+    $stmt->execute($data);
+    return (int)$this->db->lastInsertId();
   }
 }
