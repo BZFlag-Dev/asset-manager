@@ -91,7 +91,11 @@ $container->set(Configuration::class, function () {
           'allow_other' => Expect::bool(true),
           // Allow showing all other OSI-approved licenses that weren't in the 'popular' or 'common' sections above
           'allow_other_osi' => Expect::bool(false)
-        ])
+        ]),
+        'types' => Expect::arrayOf(
+          Expect::anyOf(Expect::string(), Expect::listOf(Expect::string())),
+          Expect::string()
+        )->required()
       ])
     ]),
     'email' => Expect::structure([

@@ -158,8 +158,12 @@ class ManagementController
 
       // TODO: Check if we need to factor in a buffer to contain files AND other form data within this max post size
       $upload_config['max_post_size'] = min($upload_config['max_file_size'] * $upload_config['max_file_count'], $convertToBytes(ini_get('post_max_size')));
-      // TODO: Adjust this based on the allowed types
-      $upload_config['accept'] = ".png";
+
+      $extensions = [];
+      foreach($upload_config['types'] as $e) {
+          $extensions = array_merge($extensions, array_map(fn(string $v) => '.'.$v, is_array($e) ? $e : [$e]));
+      }
+      $upload_config['accept'] = implode(',', $extensions);
 
       $licenses = [
         'popular' => array_fill_keys($upload_config['licenses']['popular'], ''),
@@ -202,7 +206,7 @@ class ManagementController
       // If we don't have a valid session, throw an error back
       if (!isset($_SESSION['username'])) {
         return $writeErrors($response, [
-          'User is not logged in or session has expired. Please log in and try again.'
+          'The login session has expired. Please log in and try again.'
         ]);
       }
 
@@ -223,28 +227,62 @@ class ManagementController
       // Verify we have at least one file that was uploaded
       if (!isset($files['assets']) || sizeof($files['assets']) < 1) {
         return $writeErrors($response, [
-          'No files were uploaded'
+          'No files were uploaded.'
+        ]);
+      }
+
+      // Verify the terms were agreed to
+      if (!isset($data['agree_terms']) || $data['agree_terms'] !== 'yes') {
+        return $writeErrors($response, [
+          'You must read and agree to the Terms of Service.'
+        ]);
+      }
+
+      // Verify the terms were agreed to
+      if (!v::email()->validate($data['uploader_email'])) {
+        return $writeErrors($response, [
+          'You must provide a valid email address.'
         ]);
       }
 
       // Start tracking errors
       $errors = [];
+      $file_errors = [];
+
+      // Track filenames so we can check for duplicates
+      // TODO: This may be unnecessary once we start to move the temporary files into place.
+      $filenames = [];
 
       foreach($files['assets'] as $index => $upload) {
-        $filename = $upload['file']->getClientFilename();
-
         // Check the error status first
         $error = $upload['file']->getError();
         if ($error != UPLOAD_ERR_OK) {
-          $errors['file'][$index][] = match ($error) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file exceeded the maximum size',
-            UPLOAD_ERR_PARTIAL, UPLOAD_ERR_NO_FILE => 'The file was not uploaded completely',
-            UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE, UPLOAD_ERR_EXTENSION => 'The file could not be written due to a server error',
-            default => 'The upload failed for an unknown reason',
+          $file_errors[$index][] = match ($error) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file had exceeded the maximum size.',
+            UPLOAD_ERR_PARTIAL, UPLOAD_ERR_NO_FILE => 'The file was not uploaded completely.',
+            UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE, UPLOAD_ERR_EXTENSION => 'The file could not be written due to a server error.',
+            default => 'The upload failed for an unknown reason.',
           };
 
           continue;
         }
+
+        $filename = $upload['file']->getClientFilename();
+
+        // Verify the filename only contains specific characters
+        if (!v::regex('/^[a-zA-Z0-9_\-]+\.[a-z0-9]+$/')->validate($filename)) {
+          $file_errors[$index][] = 'The filename contains disallowed characters. Only a-z, A-Z, 0-9, _ and - are allowed, and the file extension must exist, be lowercase, and contain only a-z.';
+          continue;
+        }
+
+        // Check if this filename was already provided as part of this upload
+        if (in_array($filename, $filenames)) {
+          $file_errors[$index][] = 'A duplicate filename was found in this upload.';
+          continue;
+        }
+
+        // Add this filename to the list of filenames part of this upload
+        $filenames[] = $filename;
 
         // Check the mime type and file extension
         $tmp_path = $upload['file']->getStream()->getMetadata('uri');
@@ -252,27 +290,53 @@ class ManagementController
         $ext_start = strrpos($filename, '.');
         // Verify we have an extension
         if ($ext_start === false || strlen($filename) === $ext_start + 1) {
-          $errors['file'][$index][] = 'The file extension is missing';
+          $file_errors[$index][] = 'The filename does not have an extension.';
           continue;
         }
-        $extension = substr($filename, $ext_start+1);
+        $extension = substr($filename, $ext_start + 1);
 
-        // TODO: Add a configuration array or database tables to store valid options
-        if ($mime_type !== 'image/png' || $extension !== 'png') {
-          $errors['file'][$index][] = 'Invalid MIME type or file extension';
+        // Check if this is a supported mime type
+        if (!array_key_exists($mime_type, $upload_config['types']))
+        {
+          // TODO: Should we list all support types?
+          $file_errors[$index][] = 'Unsupported MIME type.';
           continue;
+        }
+        // If it is supported, check if it has an expected extension for this mime type
+        else {
+          $el = &$upload_config['types'][$mime_type];
+          if (!in_array($extension, is_array($el) ? $el : [$el])) {
+            $file_errors[$index][] = 'Unexpected file extension for this MIME type.';
+            continue;
+          }
         }
 
         // Verify the file size does not exceed the limit
         $size = $upload['file']->getSize();
         if ($size > min($config->get('asset.upload.max_file_size'), $convertToBytes(ini_get('upload_max_filesize')))) {
-          $errors['file'][$index][] = 'Maximum file size exceeded';
+          $file_errors[$index][] = 'The maximum file size was exceeded.';
+          continue;
+        }
+
+        // Build the temporary and final destination paths
+        $path_temp = $config->get('path.upload')."/{$_SESSION['bzid']}_{$filename}";
+        $path_final = $config->get('path.files')."/{$_SESSION['username']}/{$filename}";
+
+        // Verify that a file with the same name doesn't already exist in the queue for this user
+        if (file_exists($path_temp)) {
+          $file_errors[$index][] = 'A file with the same name already exists in your current queue.';
+          continue;
+        }
+
+        // Verify that a file with the same final path doesn't already exist in the files directory
+        if (file_exists($path_final)) {
+          $file_errors[$index][] = 'A file with the same name already exists in the final directory.';
           continue;
         }
 
         // Verify the other form data exists for this file
         if (!isset($data['assets'][$index]) || !is_array($data['assets'][$index])) {
-          $errors['file'][$index][] = 'Asset information is missing';
+          $file_errors[$index][] = 'The asset information was not provided.';
           continue;
         }
 
@@ -281,34 +345,34 @@ class ManagementController
 
         // Require an author name
         if (!v::notEmpty()->validate($d['author'])) {
-          $errors['file'][$index][] = 'Missing author name';
+          $file_errors[$index][] = 'The author name was not provided.';
         }
 
         // Verify the source URL, if provided, is actually a URL
         if (!v::optional(v::url())->validate($d['source_url'])) {
-          $errors['file'][$index][] = 'Source URL was not a valid URL';
+          $file_errors[$index][] = 'The source URL was not a valid URL.';
         }
 
         // Require a license
         if (!v::notEmpty()->validate($d['license'])) {
-          $errors['file'][$index][] = 'Missing license';
+          $file_errors[$index][] = 'No license was selected.';
         }
         // If we allow other licenses, check if they provided the name, and either the URL or text
         else if ($d['license'] === 'Other') {
           if (!$upload_config['licenses']['allow_other']) {
-            $errors['file'][$index][] = 'Other licenses are not allowed';
+            $file_errors[$index][] = 'Other licenses are not allowed.';
           }
           // Verify that the license name is provided
           if (!v::notEmpty()->validate($d['license_name'])) {
-            $errors['file'][$index][] = 'Missing license name';
+            $file_errors[$index][] = 'The license name was not provided.';
           }
 
           // Verify either the license URL or text are provided
           if (!(v::optional(v::url()))->validate($d['license_url'])) {
-            $errors['file'][$index][] = 'License URL was not a valid URL';
+            $file_errors[$index][] = 'The license URL was not a valid URL.';
           }
           else if (!(v::notEmpty()->validate($d['license_url']) || v::notEmpty()->validate($d['license_text']))) {
-            $errors['file'][$index][] = 'Missing license URL or text';
+            $file_errors[$index][] = 'The license URL or text was not provided. One or both must be provided when "Other Approved Licensed" is selected.';
           }
         }
         else {
@@ -318,14 +382,20 @@ class ManagementController
             !in_array($d['license'], $upload_config['licenses']['common']) &&
             !($upload_config['licenses']['allow_other_osi'] && $spdx->validate($d['license']) && $spdx->isOsiApprovedByIdentifier($d['license']))
           ) {
-            $errors['file'][$index][] = 'Invalid license selected';
+            $file_errors[$index][] = 'An invalid license was selected.';
           }
         }
       }
 
       // If we had any errors, return them to the user
-      if (sizeof($errors) > 0) {
-        return $writeErrors($response, $errors);
+      if (sizeof($errors) > 0 || sizeof($file_errors) > 0) {
+        $response->getBody()->write(json_encode([
+          'success' => false,
+          'errors' => $errors,
+          'file_errors' => $file_errors
+        ]));
+        return $response
+          ->withHeader('Content-Type', 'application/json');
       }
 
       // TODO: Actually process the files/data and put them into the queue

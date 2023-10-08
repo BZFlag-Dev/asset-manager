@@ -96,9 +96,7 @@ function validateLicense(ev) {
     license_selector.setCustomValidity('');
 }
 
-function removeFile(ev) {
-    const upload_container = ev.target.closest('.upload')
-
+function removeFile(upload_container) {
     // Subtract the file size from our total and update the totals
     total_bytes -= upload_container.querySelector('input[type=file]').files[0].size;
     total_files--;
@@ -129,6 +127,7 @@ const container = document.getElementById('file_list');
 const template = document.getElementById('file_template');
 const upload_form = document.getElementById('uploads');
 const new_files = document.getElementById('new_files');
+const error_container = document.getElementById('errors');
 
 // Upload limit summary elements and counters
 const total_files_span = document.getElementById('total_files');
@@ -170,9 +169,8 @@ function setInvalidMessage(selector, message) {
         });
     });
 }
-setInvalidMessage('#first_name', 'Your first name must be provided.');
-setInvalidMessage('#last_name', 'Your last name must be provided.');
 setInvalidMessage('#new_files', 'At least one file must be provided.');
+setInvalidMessage('#uploader_email', 'Your email must be provided.');
 setInvalidMessage('#agree_terms', 'All images must comply with the Terms of Service before they may be uploaded.');
 
 const sol = document.getElementById('show_other_licenses');
@@ -194,6 +192,14 @@ new_files.addEventListener('change', function(ev) {
                 errors.push("%FILENAME% exceeds the maximum file size.".replace('%FILENAME%', file.name));
                 continue;
             }
+
+            // Validate the filename
+            if (!(new RegExp('^[a-zA-Z0-9_\-]+\\.[a-z0-9]+$', 'g')).test(file.name)) {
+                errors.push("Filename %FILENAME% contains disallowed characters. Only a-z, A-Z, 0-9, _ and - are allowed, and the file extension must exist, be lowercase, and contain only a-z.");
+                continue;
+            }
+
+            // TODO: Check for duplicate filename
 
             // Clone our template
             const clonedTemplate = template.content.cloneNode(true);
@@ -235,10 +241,13 @@ new_files.addEventListener('change', function(ev) {
                 el.id = el.id + '_' + asset_index;
                 el.name = el.name.replace('%ASSET_INDEX%', asset_index);
             });
+            clonedTemplate.querySelector('.asset_index').value = asset_index;
             asset_index++;
 
             // Attach events
-            clonedTemplate.querySelector('.remove-file').addEventListener('click', removeFile);
+            clonedTemplate.querySelector('.remove-file').addEventListener('click', (ev) => {
+                removeFile(ev.target.closest('.upload'));
+            });
             clonedTemplate.querySelector('.license-select').addEventListener('change', updateLicense);
             clonedTemplate.querySelector('.license-name').addEventListener('change', validateLicense);
             clonedTemplate.querySelector('.license-url').addEventListener('change', validateLicense);
@@ -301,21 +310,75 @@ upload_form.addEventListener('submit', async (ev) => {
             // Reset the form
             document.getElementById('agree_terms').checked = false;
             container.innerHTML = '';
+            error_container.classList.toggle('d-none', true);
             total_files = 0;
             total_bytes = 0;
             updateTotals();
-            upload_button.disabled = false;
-            upload_button.innerHTML = 'Upload Assets';
-            showDialog('Success', 'The files have been submitted to the moderation queue.');
+            showDialog('Success', 'All the files have been submitted to the moderation queue.');
         }
         else {
-            upload_button.disabled = false;
-            upload_button.innerHTML = 'Upload Assets';
-            showDialog('Error', data.errors);
+            // Keep track of any files that were successful
+            let successful_files = [];
+            // Check if any files had errors
+            if (data.file_errors && Object.keys(data.file_errors).length) {
+                document.querySelectorAll('.upload').forEach((el) => {
+                    const index = parseInt(el.querySelector('.asset_index').value);
+
+                    // If a file had errors, show those for the file
+                    if (data.file_errors[index]) {
+                        const file_error_container = el.querySelector('.file_error');
+                        const file_error_list = file_error_container.querySelector('ul');
+
+                        // Reset the list
+                        file_error_list.innerHTML = '';
+
+                        // Add each error to the list
+                        for (let i = 0; i < data.file_errors[index].length; ++i) {
+                            const li = document.createElement('li');
+                            li.innerText = data.file_errors[index][i];
+                            file_error_list.append(li);
+                        }
+
+                        // Show the container
+                        file_error_container.classList.toggle('d-none', false);
+                    }
+                    // Otherwise, this file was added to the queue, so remove it from the form.
+                    else {
+                        successful_files.push(el.querySelector('.file_name').innerText);
+                        removeFile(el);
+                    }
+                });
+
+                // Since we had at least one file error, add an error to the general list so the user knows to check
+                data.errors.push('There were some files with errors.');
+            }
+
+            const error_list = error_container.querySelector('ul');
+
+            // Reset the list
+            error_list.innerHTML = '';
+
+            // Add each error to the list
+            for (let i = 0; i < data.errors.length; ++i) {
+                const li = document.createElement('li');
+                li.innerText = data.errors[i];
+                error_list.append(li);
+            }
+
+            // Show the container
+            error_container.classList.toggle('d-none', false);
+
+            // If some files were successful, show a dialog indicating which
+            if (successful_files.length)
+                showDialog('Error', ['Some files had submissions errors. However, these files where successful:', ...successful_files]);
         }
     }
     // Otherwise show an error
     else {
-        showDialog('Error', 'A server error has occurred');
+        showDialog('Error', 'A server error has occurred.');
     }
+
+    // Re-enable the upload button
+    upload_button.disabled = false;
+    upload_button.innerHTML = 'Upload Assets';
 });

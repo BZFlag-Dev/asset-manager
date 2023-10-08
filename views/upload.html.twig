@@ -3,7 +3,7 @@
 {% from 'macros.twig' import bytesToSize %}
 
 {% block content %}
-    <form action="{{ url_for('upload') }}" id="uploads" class="mx-3 hide-other-licenses">
+    <form action="{{ url_for('upload') }}" id="uploads" class="hide-other-licenses">
         <input type="hidden" name="success" value="1">
 
         <div class="container text-center">
@@ -33,6 +33,7 @@
 
         <template id="file_template">
         <div class="upload mb-3 pb-3 border-bottom">
+            <input type="hidden" class="asset_index">
             <input type="file" name="assets[%ASSET_INDEX%][file]" class="d-none" accept="{{ upload_config.accept }}">
             <div class="row mb-3">
                 <div class="col me-3 position-relative">
@@ -53,6 +54,12 @@
 
                     <label class="form-label" for="source_url">Source URL:</label>
                     <input type="text" class="form-control" id="source_url" name="assets[%ASSET_INDEX%][source_url]">
+                </div>
+            </div>
+            <div class="row d-none file_error">
+                <div class="col text-danger-emphasis">
+                    <strong>Errors:</strong><br>
+                    <ul></ul>
                 </div>
             </div>
             <div class="row">
@@ -96,14 +103,14 @@
         </div>
         </template>
 
-        <div class="row mb-5">
+        <div class="row mb-3">
             <div class="col">
                 <label class="form-label" for="new_files">Add additional files</label>
                 <input type="file" class="form-control" id="new_files" multiple accept="{{ upload_config.accept }}" required>
             </div>
         </div>
         {% if upload_config.licenses.allow_other_osi %}
-        <div class="row mb-5">
+        <div class="row">
             <div class="col">
                 <div class="form-check form-switch">
                     <input type="checkbox" class="form-check-input" id="show_other_licenses">
@@ -113,6 +120,8 @@
         </div>
         {% endif %}
 
+        <hr>
+
         <div class="row mb-3">
             <h3>Uploader Information</h3>
             <div class="col">
@@ -121,20 +130,22 @@
             </div>
 
             <div class="col">
-                <label class="form-label" for="first_name">First Name:</label>
-                <input type="text" class="form-control" id="first_name" required>
-            </div>
-
-            <div class="col">
-                <label class="form-label" for="last_name">Last Name:</label>
-                <input type="text" class="form-control" id="last_name" required>
+                <label class="form-label" for="uploader_email">Email Address:</label>
+                <input type="email" class="form-control" id="uploader_email" name="uploader_email" required>
             </div>
         </div>
 
         <div class="row">
             <div class="col form-check">
-                <input class="form-check-inline" type="checkbox" value="1" id="agree_terms" required>
+                <input class="form-check-inline" type="checkbox" value="yes" id="agree_terms" name="agree_terms" required>
                 <label class="form-check-label" for="agree_terms">I confirm that all of the above images comply with the <a href="{{ url_for('terms') }}" target="_blank">Terms of Service</a>.</label>
+            </div>
+        </div>
+
+        <div class="row d-none text-danger-emphasis mt-4" id="errors">
+            <div class="col">
+                <strong>Errors:</strong><br>
+                <ul></ul>
             </div>
         </div>
 
