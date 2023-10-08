@@ -62,17 +62,17 @@ class ManagementController
 
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL => $config->get('auth.list_url'),
-        CURLOPT_HEADER => false,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => http_build_query([
-            'action' => 'CHECKTOKENS',
-            'checktokens' => $checktokens,
-            'groups' => implode("\r\n", [
-                $config->get('auth.admin_group')
-            ])
+      CURLOPT_URL => $config->get('auth.list_url'),
+      CURLOPT_HEADER => false,
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_POST => true,
+      CURLOPT_POSTFIELDS => http_build_query([
+        'action' => 'CHECKTOKENS',
+        'checktokens' => $checktokens,
+        'groups' => implode("\r\n", [
+          $config->get('auth.admin_group')
         ])
+      ])
     ]);
 
     $result = curl_exec($ch);
@@ -103,7 +103,7 @@ class ManagementController
       $_SESSION = [];
       // TODO: Logging this error
       return $twig->render($response, 'error.html.twig', [
-          'message' => 'There was an error verifying your login.'
+        'message' => 'There was an error verifying your login.'
       ]);
     }
 
@@ -126,7 +126,7 @@ class ManagementController
   public function terms(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config): ResponseInterface
   {
     return $twig->render($response, 'terms.html.twig', [
-        'takedown_address' => $config->get('site.takedown_address')
+      'takedown_address' => $config->get('site.takedown_address')
     ]);
   }
 
@@ -161,7 +161,7 @@ class ManagementController
 
       $extensions = [];
       foreach($upload_config['types'] as $e) {
-          $extensions = array_merge($extensions, array_map(fn(string $v) => '.'.$v, is_array($e) ? $e : [$e]));
+        $extensions = array_merge($extensions, array_map(fn (string $v) => '.'.$v, is_array($e) ? $e : [$e]));
       }
       $upload_config['accept'] = implode(',', $extensions);
 
@@ -276,7 +276,7 @@ class ManagementController
         }
 
         // Check if this filename was already provided as part of this upload
-        if (in_array($filename, $filenames)) {
+        if (in_array($filename, $filenames, true)) {
           $file_errors[$index][] = 'A duplicate filename was found in this upload.';
           continue;
         }
@@ -296,8 +296,7 @@ class ManagementController
         $extension = substr($filename, $ext_start + 1);
 
         // Check if this is a supported mime type
-        if (!array_key_exists($mime_type, $upload_config['types']))
-        {
+        if (!array_key_exists($mime_type, $upload_config['types'])) {
           // TODO: Should we list all support types?
           $file_errors[$index][] = 'Unsupported MIME type.';
           continue;
@@ -305,7 +304,7 @@ class ManagementController
         // If it is supported, check if it has an expected extension for this mime type
         else {
           $el = &$upload_config['types'][$mime_type];
-          if (!in_array($extension, is_array($el) ? $el : [$el])) {
+          if (!in_array($extension, is_array($el) ? $el : [$el], true)) {
             $file_errors[$index][] = 'Unexpected file extension for this MIME type.';
             continue;
           }
@@ -358,7 +357,7 @@ class ManagementController
           $file_errors[$index][] = 'No license was selected.';
         }
         // If we allow other licenses, check if they provided the name, and either the URL or text
-        else if ($d['license'] === 'Other') {
+        elseif ($d['license'] === 'Other') {
           if (!$upload_config['licenses']['allow_other']) {
             $file_errors[$index][] = 'Other licenses are not allowed.';
           }
@@ -370,16 +369,14 @@ class ManagementController
           // Verify either the license URL or text are provided
           if (!(v::optional(v::url()))->validate($d['license_url'])) {
             $file_errors[$index][] = 'The license URL was not a valid URL.';
-          }
-          else if (!(v::notEmpty()->validate($d['license_url']) || v::notEmpty()->validate($d['license_text']))) {
+          } elseif (!(v::notEmpty()->validate($d['license_url']) || v::notEmpty()->validate($d['license_text']))) {
             $file_errors[$index][] = 'The license URL or text was not provided. One or both must be provided when "Other Approved Licensed" is selected.';
           }
-        }
-        else {
+        } else {
           // Check if it's a popular or common license, or, if enabled, another OSI-approved license
           if (
-            !in_array($d['license'], $upload_config['licenses']['popular']) &&
-            !in_array($d['license'], $upload_config['licenses']['common']) &&
+            !in_array($d['license'], $upload_config['licenses']['popular'], true) &&
+            !in_array($d['license'], $upload_config['licenses']['common'], true) &&
             !($upload_config['licenses']['allow_other_osi'] && $spdx->validate($d['license']) && $spdx->isOsiApprovedByIdentifier($d['license']))
           ) {
             $file_errors[$index][] = 'An invalid license was selected.';

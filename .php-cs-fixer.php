@@ -30,6 +30,7 @@ EOT;
 $config = new PhpCsFixer\Config();
 return $config->setRules([
   '@PSR12' => true,
+  'array_indentation' => true,
   'declare_strict_types' => true,
   'strict_param' => true,
   'ordered_imports' => true,

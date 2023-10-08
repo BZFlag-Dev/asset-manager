@@ -35,11 +35,11 @@ $session_save_path = ini_get('session.save_path').DIRECTORY_SEPARATOR.'asset-man
 if (!is_dir($session_save_path))
   mkdir($session_save_path);
 session_start([
-    'save_path' => $session_save_path,
-    'gc_maxlifetime' => 60 * 60 * 2,
-    'cookie_httponly' => true,
-    'cookie_samesite' => 'Strict',
-    'use_trans_sid' => false
+  'save_path' => $session_save_path,
+  'gc_maxlifetime' => 60 * 60 * 2,
+  'cookie_httponly' => true,
+  'cookie_samesite' => 'Strict',
+  'use_trans_sid' => false
 ]);
 
 $container = new \DI\Container();
@@ -52,21 +52,21 @@ $container->set(Configuration::class, function () {
       'path' => Expect::string(dirname(__DIR__).'/var/data/db.sqlite3')
     ]),
     'site' => Expect::structure([
-        // The name of the game that these assets are being hosted for
-        'game_name' => Expect::string('BZFlag'),
-        // Site title (used for the page header and the page title)
-        'title' => Expect::string('Asset Manager'),
-        // Base path
-        'base_path' => Expect::string('/manage'),
-        // Content takedown requests
-        'takedown_address' => Expect::email()->required()
+      // The name of the game that these assets are being hosted for
+      'game_name' => Expect::string('BZFlag'),
+      // Site title (used for the page header and the page title)
+      'title' => Expect::string('Asset Manager'),
+      // Base path
+      'base_path' => Expect::string('/manage'),
+      // Content takedown requests
+      'takedown_address' => Expect::email()->required()
     ]),
     // Paths should NOT end with a trailing slash
     'path' => Expect::structure([
-        // Uploaded files are stored here before approval
-        'upload' => Expect::string(dirname(__DIR__).'/var/upload'),
-        // Approved files are moved here
-        'files' => Expect::string()->required()
+      // Uploaded files are stored here before approval
+      'upload' => Expect::string(dirname(__DIR__).'/var/upload'),
+      // Approved files are moved here
+      'files' => Expect::string()->required()
     ]),
     'asset' => Expect::structure([
       'image' => Expect::structure([
@@ -99,19 +99,19 @@ $container->set(Configuration::class, function () {
       ])
     ]),
     'email' => Expect::structure([
-        // Emails are sent from this address
-        'from_address' => Expect::email()->required(),
-        // When a new asset is uploaded for moderation, all emails here will
-        // be notified.
-        'notify_addresses' => Expect::listOf(Expect::email())->required()
+      // Emails are sent from this address
+      'from_address' => Expect::email()->required(),
+      // When a new asset is uploaded for moderation, all emails here will
+      // be notified.
+      'notify_addresses' => Expect::listOf(Expect::email())->required()
     ]),
     'auth' => Expect::structure([
-        // The URL to the BZFlag list server
-        'list_url' => Expect::string('https://my.bzflag.org/db/'),
-        // An uppercase group name in the format of ORG.GROUP
-        'admin_group' => Expect::string()->required(),
-        // This should only be set to false for local test/dev environments
-        'check_ip' => Expect::bool(true)
+      // The URL to the BZFlag list server
+      'list_url' => Expect::string('https://my.bzflag.org/db/'),
+      // An uppercase group name in the format of ORG.GROUP
+      'admin_group' => Expect::string()->required(),
+      // This should only be set to false for local test/dev environments
+      'check_ip' => Expect::bool(true)
     ]),
     'debug' => Expect::bool(false)
   ]);
@@ -133,8 +133,8 @@ $container->set(DatabaseInterface::class, function (Configuration $config) {
 
 $container->set(Twig::class, function (Configuration $config) {
   $twig = Twig::create(__DIR__.'/../views', [
-      'cache' => __DIR__.'/../var/cache/twig',
-      'auto_reload' => true
+    'cache' => __DIR__.'/../var/cache/twig',
+    'auto_reload' => true
   ]);
 
   //var_dump($_SESSION); exit;
