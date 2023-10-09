@@ -36,13 +36,13 @@
             <input type="hidden" class="asset_index">
             <input type="file" name="assets[%ASSET_INDEX%][file]" class="d-none" accept="{{ upload_config.accept }}">
             <div class="row mb-3">
-                <div class="col me-3 position-relative">
+                <div class="col me-3 position-relative file-info">
                     <h3>File Information</h3>
-                    <canvas class="file_preview d-none position-absolute" width="512" height="512"></canvas>
-                    <div class="file_metadata">
+                    <canvas class="file-preview d-none position-absolute" width="512" height="512"></canvas>
+                    <div class="file-metadata">
                         Filename:<br>
-                        <span class="file_name font-monospace bg-dark-subtle p-1"></span><br>
-                        File size: <span class="file_size"></span><br>
+                        <span class="file-name font-monospace bg-dark-subtle p-1"></span><br>
+                        File size: <span class="file-size"></span><br>
                         <button class="btn btn-outline-danger mt-3 remove-file" type="button">Remove File</button>
                     </div>
                 </div>
@@ -55,7 +55,7 @@
                     <input type="text" class="form-control" id="source_url" name="assets[%ASSET_INDEX%][source_url]">
                 </div>
             </div>
-            <div class="row d-none file_error">
+            <div class="row d-none file-error">
                 <div class="col text-danger-emphasis">
                     <strong>Errors:</strong><br>
                     <ul></ul>

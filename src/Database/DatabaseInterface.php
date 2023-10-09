@@ -30,7 +30,7 @@ interface DatabaseInterface
 
   public function queue_get(): array;
 
-  //public function queue_get_by_id(int $id): ?array;
+  public function queue_get_by_id(int $id): ?array;
 
   public function queue_get_by_bzid(string $bzid): ?array;
 
@@ -38,5 +38,7 @@ interface DatabaseInterface
 
   public function queue_add(array $data): ?int;
 
-  public function queue_remove($id): bool;
+  public function queue_update(int $id, array $data): bool;
+
+  public function queue_remove(int $id): bool;
 }

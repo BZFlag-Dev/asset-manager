@@ -6,21 +6,30 @@ body {
     z-index: 999;
 }
 
-.file_preview {
+.file-preview {
+    display: none;
     transition: all 330ms ease-in-out;
     width: 128px;
     height: 128px;
     cursor: zoom-in;
 }
 
-.file_preview.expanded {
+.has-preview .file-preview {
+    display: block;
+}
+
+.file-preview.expanded {
     width: 512px;
     height: 512px;
     cursor: zoom-out;
 }
 
-.file_metadata {
+.has-preview .file-metadata {
     margin-left: 144px;
+}
+
+.has-preview.file-info {
+    min-height: 180px;
 }
 
 .hide-other-licenses .other-licenses {

@@ -23,11 +23,7 @@ function updateLicense(ev) {
 
     // Loop through all the custom license elements in for this file
     ev.target.closest('.upload').querySelectorAll('.custom-license').forEach((el) => {
-        // If it's 255, that's a custom license, so show this
-        if (ev.target.value === 'Other')
-            el.classList.remove('d-none');
-        else
-            el.classList.add('d-none');
+        el.classList.toggle('d-none', ev.target.value !== 'Other');
     });
 
     // Also validate the license
@@ -168,8 +164,8 @@ new_files.addEventListener('change', function(ev) {
             clonedTemplate.querySelector('input[type=file]').files = dt.files;
 
             // Update our file metadata
-            clonedTemplate.querySelector('.file_name').innerHTML = file.name;
-            clonedTemplate.querySelector('.file_size').innerHTML = bytesToSize(file.size);
+            clonedTemplate.querySelector('.file-name').innerHTML = file.name;
+            clonedTemplate.querySelector('.file-size').innerHTML = bytesToSize(file.size);
 
             // Update totals
             total_files++;
@@ -177,18 +173,9 @@ new_files.addEventListener('change', function(ev) {
             updateTotals();
 
             // Grab our preview canvas and populate it
-            const preview = clonedTemplate.querySelector('.file_preview');
+            const preview = clonedTemplate.querySelector('.file-preview');
             if (file.type.substring(0, 6) === 'image/') {
                 previewImage(preview, URL.createObjectURL(file));
-                preview.addEventListener('click', () => {
-                    if (preview.classList.contains('expanded')) {
-                        preview.classList.remove('expanded');
-                        // Delay removing the front class because it visually looks better
-                        setTimeout(() => preview.classList.remove('front'), 500);
-                    } else {
-                        preview.classList.add('expanded', 'front');
-                    }
-                });
             }
 
             // Add the asset index to the label/input/select/textarea and replace %ASSET_INDEX% with the current index
@@ -284,7 +271,7 @@ upload_form.addEventListener('submit', async (ev) => {
 
                     // If a file had errors, show those for the file
                     if (data.file_errors[index]) {
-                        const file_error_container = el.querySelector('.file_error');
+                        const file_error_container = el.querySelector('.file-error');
                         const file_error_list = file_error_container.querySelector('ul');
 
                         // Reset the list
@@ -302,7 +289,7 @@ upload_form.addEventListener('submit', async (ev) => {
                     }
                     // Otherwise, this file was added to the queue, so remove it from the form.
                     else {
-                        successful_files.push(el.querySelector('.file_name').innerText);
+                        successful_files.push(el.querySelector('.file-name').innerText);
                         removeFile(el);
                     }
                 });

@@ -295,8 +295,8 @@ class ManagementController
         $filenames[] = $filename;
 
         // Check the mime type and file extension
-        $tmp_path = $upload['file']->getStream()->getMetadata('uri');
-        $mime_type = mime_content_type($tmp_path);
+        $path_tmp = $upload['file']->getStream()->getMetadata('uri');
+        $mime_type = mime_content_type($path_tmp);
         $ext_start = strrpos($filename, '.');
         // Verify we have an extension
         if ($ext_start === false || strlen($filename) === $ext_start + 1) {
@@ -327,12 +327,21 @@ class ManagementController
           continue;
         }
 
+        // If it's an image, ensure it doesn't exceed the maximum size
+        if (str_starts_with($mime_type, 'image/')) {
+          $image_size = getimagesize($path_tmp);
+          if ($image_size !== false && ($image_size[0] > $config->get('asset.image.max_width') || $image_size[1] > $config->get('asset.image.max_height'))) {
+            $file_errors[$index][] = 'The image exceeds the maximum width or height.';
+            continue;
+          }
+        }
+
         // Build the temporary and final destination paths
-        $path_temp = $config->get('path.upload')."/{$_SESSION['bzid']}_{$filename}";
+        $path_queue = $config->get('path.upload')."/{$_SESSION['bzid']}_{$filename}";
         $path_final = $config->get('path.files')."/{$_SESSION['username']}/{$filename}";
 
         // Verify that a file with the same name doesn't already exist in the queue for this user
-        if (file_exists($path_temp)) {
+        if (file_exists($path_queue)) {
           $file_errors[$index][] = 'A file with the same name already exists in your current queue.';
           continue;
         }
@@ -396,7 +405,7 @@ class ManagementController
         // If we have no errors for this file, move it into the temporary directory and add it to the queue
         if (!isset($file_errors[$index]) || sizeof($file_errors[$index]) === 0) {
           try {
-            $upload['file']->moveTo($path_temp);
+            $upload['file']->moveTo($path_queue);
           } catch (\InvalidArgumentException | \RuntimeException) {
             // TODO: Log the error
             $file_errors[$index][] = 'A server error occurred while moving the temporary file.';
@@ -452,24 +461,121 @@ class ManagementController
         ->withStatus(302);
     }
 
-    // TODO: Pagination
+    if ($request->getMethod() == 'GET') {
+      // TODO: Pagination
 
-    // Get all the items in the queue
-    $queue = $db->queue_get();
+      // Get all the items in the queue
+      $queue = $db->queue_get();
 
-    foreach($queue as &$asset) {
-      if ($asset['license_id'] !== 'Other') {
-        if ($spdx->validate($asset['license_id'])) {
-          $asset['license_name'] = $spdx->getLicenseByIdentifier($asset['license_id'])[0];
-        } else {
-          $asset['license_name'] = 'Unknown or invalid';
+      foreach($queue as &$asset) {
+        if ($asset['license_id'] !== 'Other') {
+          if ($spdx->validate($asset['license_id'])) {
+            $asset['license_name'] = $spdx->getLicenseByIdentifier($asset['license_id'])[0];
+          } else {
+            $asset['license_name'] = 'Unknown or invalid';
+          }
         }
       }
 
-  }
+      return $twig->render($response, 'queue.html.twig', [
+        'queue' => $queue
+      ]);
+    } elseif ($request->getMethod() == 'POST') {
+      $data = $request->getParsedBody();
 
-    return $twig->render($response, 'queue.html.twig', [
-      'queue' => $queue
-    ]);
+      $errors = [];
+
+      $notifications = [];
+
+      foreach($data['review'] as $id => $review) {
+        if (empty($review['action'])) {
+          continue;
+        }
+
+        // Fetch this queue entry
+        $queue = $db->queue_get_by_id($id);
+
+        if (!$queue) {
+          continue;
+        }
+
+        if ($review['action'] === 'approve') {
+          // Paths
+          $path_queue = $config->get('path.upload')."/{$queue['bzid']}_{$queue['filename']}";
+          $path_final_dir = $config->get('path.files')."/{$queue['username']}";
+          $path_final = "$path_final_dir/{$queue['filename']}";
+
+          // Verify the temporary file exists
+          if (!file_exists($path_queue)) {
+            $errors[$id][] = 'The temporary file does not exist.';
+            continue;
+          }
+
+          // Verify the final destination doesn't already exist
+          if (file_exists($path_final)) {
+            $errors[$id][] = 'A file already exists at the final path.';
+            continue;
+          }
+
+          // Create the final directory if it doesn't exist
+          if (!is_dir($path_final_dir)) {
+            if (!file_exists($path_final_dir)) {
+              mkdir($path_final_dir);
+            }
+            // Else, it might exist as a file or link, so bail
+            else {
+              $errors[$id][] = 'File or link exists where the final directory would be.';
+              continue;
+            }
+          }
+
+          // Move the temporary file to the final destination
+          rename($path_queue, $path_final);
+
+          // TODO: Add it to the other database
+
+          // Remove it from the database
+          $db->queue_remove($queue['id']);
+
+          $notifications[$queue['email']]['approved'][] = $queue['filename'];
+
+        } else if ($review['action'] === 'request' || $review['action'] === 'reject') {
+          // Verify that we have the details for this review
+          if (!v::notEmpty()->validate($review['details'])) {
+            $errors[$id][] = 'Review details were not provided.';
+            continue;
+          }
+
+          if ($review['action'] === 'request') {
+            $db->queue_update($queue['id'], [
+              'details' => $review['details'],
+              'change_requested' => 1
+            ]);
+
+            $notifications[$queue['email']]['change_requested'][] = [
+              'filename' => $queue['filename'],
+              'details' => $review['details']
+            ];
+          } else {
+            // Delete the temporary file
+            unlink($config->get('path.upload')."/{$queue['bzid']}_{$queue['filename']}");
+
+            // Remove the entry from the database
+            $db->queue_remove($queue['id']);
+
+            $notifications[$queue['email']]['rejected'][] = [
+              'filename' => $queue['filename'],
+              'details' => $review['details']
+            ];
+          }
+        }
+      }
+
+      // TODO: Send email notifications by looping through $notifications[$queue['email']]
+
+      return $response
+        ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('queue'))
+        ->withStatus(302);
+    }
   }
 }

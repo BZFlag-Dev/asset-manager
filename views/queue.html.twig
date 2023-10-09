@@ -3,14 +3,14 @@
 {% from 'macros.twig' import bytesToSize %}
 
 {% block content %}
-    <form action="{{ url_for('queue') }}" id="uploads" novalidate method="post" enctype="multipart/form-data">
-        {% for asset in queue %}
-        <div class="mb-3 pb-3">
+    <form action="{{ url_for('queue') }}" id="uploads">
+        {% for asset in queue|filter(v => v.change_requested == 0) %}
+        <div class="mb-3 pb-3 asset">
             <div class="row mb-3">
-                <div class="col me-3 position-relative">
+                <div class="col me-3 position-relative file-info">
                     <h3>File Information</h3>
-                    <canvas class="file_preview d-none position-absolute" width="512" height="512" id="preview_{{ asset.id }}"></canvas>
-                    <div class="file_metadata">
+                    <canvas class="file-preview position-absolute" width="512" height="512" id="preview_{{ asset.id }}"></canvas>
+                    <div class="file-metadata">
                         <p>
                             <strong>Filename:</strong><br>
                             <span class="font-monospace bg-dark-subtle p-1">{{ asset.filename | escape }}</span>
@@ -22,7 +22,6 @@
                 </div>
                 <div class="col">
                     <h3>Source Information</h3>
-
                     <p>
                         <strong>Author Name:</strong><br>
                         <span>{{ asset.author | escape }}</span>
@@ -36,7 +35,6 @@
                 </div>
                 <div class="col">
                     <h3>Uploader Information</h3>
-
                     <p>
                         <strong>Uploader:</strong><br>
                         {{ asset.username }} ({{ asset.bzid }})
@@ -65,27 +63,34 @@
                     {% endif %}
                 </div>
             </div>
-        </div>
+
             <div class="row">
                 <div class="col">
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="review[{{ asset.id }}" id="review_{{ asset.id }}_nothing" value="" checked>
+                        <input class="form-check-input review-action" type="radio" name="review[{{ asset.id }}][action]" id="review_{{ asset.id }}_nothing" value="" checked>
                         <label class="form-check-label" for="review_{{ asset.id }}_nothing">Do Nothing</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="review[{{ asset.id }}" id="review_{{ asset.id }}_approve" value="approve">
+                        <input class="form-check-input review-action" type="radio" name="review[{{ asset.id }}][action]" id="review_{{ asset.id }}_approve" value="approve">
                         <label class="form-check-label text-success-emphasis" for="review_{{ asset.id }}_approve"><strong>Approve</strong></label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="review[{{ asset.id }}" id="review_{{ asset.id }}_request" value="request">
+                        <input class="form-check-input review-action" type="radio" name="review[{{ asset.id }}][action]" id="review_{{ asset.id }}_request" value="request">
                         <label class="form-check-label text-warning" for="review_{{ asset.id }}_request">Request Changes</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="review[{{ asset.id }}" id="review_{{ asset.id }}_reject" value="reject">
+                        <input class="form-check-input review-action" type="radio" name="review[{{ asset.id }}][action]" id="review_{{ asset.id }}_reject" value="reject">
                         <label class="form-check-label text-danger-emphasis" for="review_{{ asset.id }}_reject">Reject</label>
                     </div>
                 </div>
             </div>
+            <div class="row d-none review-details mt-3">
+                <div class="col">
+                    <label class="form-label" for="review_{{ asset.id }}_details">Request/Rejection Details:</label>
+                    <textarea class="form-control" id="review_{{ asset.id }}_details" name="review[{{ asset.id }}][details]" rows="8"></textarea>
+                </div>
+            </div>
+        </div>
 
         <hr>
         {% endfor %}
@@ -102,7 +107,7 @@
 <script src="{{ base_path() }}/js/preview.js"></script>
 <script src="{{ base_path() }}/js/queue.js"></script>
 <script>
-{% for asset in queue %}
+{% for asset in queue|filter(v => v.change_requested == 0) %}
     {% if asset.mime_type starts with 'image/' %}
     previewImage(document.getElementById('preview_{{ asset.id }}'), '{{ url_for('view', {'bzid': asset.bzid, 'queueid': asset.id, width: 256, height: 256}) | escape('js') }}');
     {% endif %}

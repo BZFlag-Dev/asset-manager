@@ -62,7 +62,9 @@ class SQLite3 implements DatabaseInterface
 
         // If this is a clean install, create the initial tables
         if ($version < 1) {
-          $this->db->query(/** @lang SQLite */ 'CREATE TABLE queue (id INTEGER PRIMARY KEY AUTOINCREMENT, bzid TEXT NOT NULL, username TEXT NOT NULL, email TEXT NOT NULL, filename TEXT NOT NULL, file_size INTEGER NOT NULL, mime_type TEXT NOT NULL, author TEXT NOT NULL, source_url TEXT NOT NULL, license_id TEXT NOT NULL, license_name TEXT, license_url TEXT, license_text TEXT, UNIQUE(bzid, filename))');
+          $this->db->query(/** @lang SQLite */ 'CREATE TABLE queue (id INTEGER PRIMARY KEY AUTOINCREMENT, bzid TEXT NOT NULL, username TEXT NOT NULL, email TEXT NOT NULL, filename TEXT NOT NULL, file_size INTEGER NOT NULL, mime_type TEXT NOT NULL, author TEXT NOT NULL, source_url TEXT NOT NULL, license_id TEXT NOT NULL, license_name TEXT, license_url TEXT, license_text TEXT, details TEXT, change_requested INTEGER NOT NULL DEFAULT 0, UNIQUE(bzid, filename))');
+          $this->db->query(/** @lang SQLite */ 'CREATE INDEX queue_bzid_idx ON queue (bzid)');
+          $this->db->query(/** @lang SQLite */ 'CREATE INDEX queue_change_requested_idx ON queue (change_requested)');
         }
 
         // Update the user_version now that we've updated the schema
@@ -85,9 +87,21 @@ class SQLite3 implements DatabaseInterface
     }
   }
 
-  public function queue_get(): array {
+  public function queue_get(): array
+  {
     $query = $this->db->query(/** @lang SQLite */ 'SELECT * FROM queue');
     return $query->fetchAll();
+  }
+
+  public function queue_get_by_id(int $id): ?array
+  {
+    $stmt = $this->db->prepare(/** @lang SQLite */ "SELECT * FROM queue WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row !== false) {
+      return $row;
+    }
+    return null;
   }
 
   public function queue_get_by_bzid(string $bzid): ?array
@@ -119,7 +133,19 @@ class SQLite3 implements DatabaseInterface
     return (int)$this->db->lastInsertId();
   }
 
-  public function queue_remove($id): bool
+  public function queue_update(int $id, array $data): bool
+  {
+    if (sizeof($data) === 0) {
+      return false;
+    }
+
+    $fields = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($data)));
+    $stmt = $this->db->prepare(/** @lang SQLite */ "UPDATE queue SET $fields WHERE id = :id LIMIT 1");
+    $stmt->execute([...$data, 'id' => $id]);
+    return $stmt->rowCount() === 1;
+  }
+
+  public function queue_remove(int $id): bool
   {
     $stmt = $this->db->prepare(/** @lang SQLite */ 'DELETE FROM queue WHERE id = :id');
     $stmt->execute(['id' => $id]);

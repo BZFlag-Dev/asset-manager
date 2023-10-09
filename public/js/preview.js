@@ -33,6 +33,26 @@ function previewImage(canvas, img_src) {
         const size = clampImageSize(img.width, img.height, canvas.width, canvas.height);
         // Draw the image in the top left
         ctx.drawImage(img, 0, 0, size.width, size.height);
+
+        // Show the canvas
         canvas.classList.remove('d-none');
-    })
+
+        // Add class to the parent
+        canvas.parentNode.classList.add('has-preview');
+
+        // Add any preview events
+        addPreviewEvents(canvas);
+    });
+}
+
+function addPreviewEvents(el) {
+    el.addEventListener('click', () => {
+        if (el.classList.contains('expanded')) {
+            el.classList.remove('expanded');
+            // Delay removing the front class because it visually looks better
+            setTimeout(() => el.classList.remove('front'), 500);
+        } else {
+            el.classList.add('expanded', 'front');
+        }
+    });
 }

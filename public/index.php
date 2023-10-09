@@ -70,8 +70,8 @@ $container->set(Configuration::class, function () {
     ]),
     'asset' => Expect::structure([
       'image' => Expect::structure([
-        'max_width' => Expect::int(256),
-        'max_height' => Expect::int(256)
+        'max_width' => Expect::int(4096),
+        'max_height' => Expect::int(4096)
       ]),
       'upload' => Expect::structure([
         'max_file_size' => Expect::int(2 * 1024 * 1024)->min(512 * 1024),
@@ -171,7 +171,7 @@ $app->get('/login[/{token}/{username}]', [ManagementController::class, 'login'])
 $app->get('/logout', [ManagementController::class, 'logout'])->setName('logout');
 $app->get('/terms', [ManagementController::class, 'terms'])->setName('terms');
 $app->map(['GET', 'POST'], '/upload', [ManagementController::class, 'upload'])->setName('upload');
-$app->get('/queue', [ManagementController::class, 'queue'])->setName('queue');
+$app->map(['GET', 'POST'], '/queue', [ManagementController::class, 'queue'])->setName('queue');
 $app->get('/view/{bzid}/{queueid}[/{width}/{height}]', [AssetController::class, 'view'])->setName('view');
 
 // Let's go!
