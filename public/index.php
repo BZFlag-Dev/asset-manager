@@ -48,7 +48,6 @@ $container->set(Configuration::class, function () {
   // Define config schema
   $config = new Configuration([
     'database' => Expect::structure([
-      'driver' => Expect::anyOf('sqlite3')->default('sqlite3'),
       'path' => Expect::string(dirname(__DIR__).'/var/data/db.sqlite3')
     ]),
     'site' => Expect::structure([
@@ -123,12 +122,7 @@ $container->set(Configuration::class, function () {
 });
 
 $container->set(DatabaseInterface::class, function (Configuration $config) {
-  $driver = $config->get('database.driver');
-  if ($driver == 'sqlite3') {
     return new \App\Database\SQLite3($config);
-  }
-
-  return null;
 });
 
 $container->set(Twig::class, function (Configuration $config) {

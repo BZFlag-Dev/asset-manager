@@ -8,8 +8,8 @@ Feature Progress
 * [X] BZFlag WebLogin integration
 * [X] Queue database
 * [X] Image thumbnail generator
-* [ ] Ability to upload new assets
-* [ ] Moderation interface for the asset queue
+* [X] Ability to upload new assets
+* [X] Moderation interface for the asset queue
 * [ ] Email notifications
   * [ ] Moderation queue reminders
 * [ ] Directory index for listing assets
@@ -19,8 +19,10 @@ Requirements
 * PHP 8.2 or later (ideally the FPM variant), with the following extensions:
   * PDO
   * cURL
-  * SQLite3
+  * FileInfo
   * GD
+  * PDO
+  * SQLite3
 * [Composer](https://getcomposer.org/download/)
 
 Installation
@@ -45,6 +47,14 @@ return [
   ],
   'auth' => [
     'admin_group' => 'SOME.GROUP',
+  ],
+  'asset' => [
+    'upload' => [
+      'types' => [
+        'image/png' => 'png',
+        'image/jpeg' => ['jpg', 'jpeg']
+      ]
+    ]
   ],
   'email' => [
     'from_address' => 'noreply@domain.test',
