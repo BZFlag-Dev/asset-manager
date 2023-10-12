@@ -122,7 +122,7 @@ $container->set(Configuration::class, function () {
 });
 
 $container->set(DatabaseInterface::class, function (Configuration $config) {
-    return new \App\Database\SQLite3($config);
+  return new \App\Database\SQLite3($config);
 });
 
 $container->set(Twig::class, function (Configuration $config) {

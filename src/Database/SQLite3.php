@@ -139,7 +139,7 @@ class SQLite3 implements DatabaseInterface
       return false;
     }
 
-    $fields = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($data)));
+    $fields = implode(', ', array_map(fn ($k) => "$k = :$k", array_keys($data)));
     $stmt = $this->db->prepare(/** @lang SQLite */ "UPDATE queue SET $fields WHERE id = :id LIMIT 1");
     $stmt->execute([...$data, 'id' => $id]);
     return $stmt->rowCount() === 1;

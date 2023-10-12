@@ -34,7 +34,7 @@ use Slim\Views\Twig;
 
 class ManagementController
 {
-  public function home(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
+  public function home(ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
   {
     $queue = null;
     if (!empty($_SESSION['bzid'])) {
@@ -55,7 +55,7 @@ class ManagementController
     ]);
   }
 
-  public function login(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, $token = '', $username = ''): ResponseInterface
+  public function login(App $app, ResponseInterface $response, Twig $twig, Configuration $config, $token = '', $username = ''): ResponseInterface
   {
     if (empty($token) || empty($username)) {
       return $response
@@ -131,7 +131,7 @@ class ManagementController
     ]);
   }
 
-  public function logout(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig): ResponseInterface
+  public function logout(App $app, ResponseInterface $response): ResponseInterface
   {
     // Clear the session and return to the homepage
     $_SESSION = [];
@@ -141,7 +141,7 @@ class ManagementController
         ->withStatus(302);
   }
 
-  public function terms(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config): ResponseInterface
+  public function terms(ResponseInterface $response, Twig $twig, Configuration $config): ResponseInterface
   {
     return $twig->render($response, 'terms.html.twig', [
       'takedown_address' => $config->get('site.takedown_address')
@@ -424,7 +424,7 @@ class ManagementController
               'license_url' => $d['license_url'],
               'license_text' => $d['license_text']
             ]);
-          } catch (\Exception $e) {
+          } catch (\Exception) {
             // TODO: Log the error
             $file_errors[$index][] = 'A database error occurred while adding the file to the queue.';
           }
@@ -541,7 +541,7 @@ class ManagementController
 
           $notifications[$queue['email']]['approved'][] = $queue['filename'];
 
-        } else if ($review['action'] === 'request' || $review['action'] === 'reject') {
+        } elseif ($review['action'] === 'request' || $review['action'] === 'reject') {
           // Verify that we have the details for this review
           if (!v::notEmpty()->validate($review['details'])) {
             $errors[$id][] = 'Review details were not provided.';
