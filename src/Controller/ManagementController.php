@@ -23,6 +23,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Database\DatabaseInterface;
+use App\Extra\Utils;
 use Composer\Spdx\SpdxLicenses;
 use League\Config\Configuration;
 use Psr\Http\Message\ResponseInterface;
@@ -100,8 +101,14 @@ class ManagementController
               in_array($config->get('auth.admin_group'), explode(':', substr($line, $pos+1)), true)
           );
         } elseif (str_starts_with($line, 'BZID: ')) {
-          $foundBZID = true;
           list($_SESSION['bzid'], $_SESSION['username']) = explode(' ', substr($line, 6), 2);
+          // TODO: Allow other characters? Spaces?
+          $_SESSION['clean_username'] = Utils::clean_username($_SESSION['username']);
+          // If the cleaned username is empty, bail out
+          if (strlen($_SESSION['clean_username']) === 0) {
+            break;
+          }
+          $foundBZID = true;
         }
       }
     }
@@ -110,6 +117,7 @@ class ManagementController
     // clear the session and show an error.
     if ($result === false || !$foundBZID || !$foundTOKGOOD) {
       $_SESSION = [];
+      session_destroy();
       // TODO: Logging this error
       return $twig->render($response, 'error.html.twig', [
         'message' => 'There was an error verifying your login.'
@@ -142,21 +150,9 @@ class ManagementController
 
   public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
   {
-    $convertToBytes = function ($size) {
-      if (str_ends_with($size, 'G')) {
-        return (int)$size * 1024 * 1024 * 1024;
-      } elseif (str_ends_with($size, 'M')) {
-        return (int)$size * 1024 * 1024;
-      } elseif (str_ends_with($size, 'K')) {
-        return (int)$size * 1024;
-      } else {
-        return (int)$size;
-      }
-    };
-
     // Fetch the upload configuration options and clamp values to the PHP maximums
     $upload_config = $config->get('asset.upload');
-    $upload_config['max_file_size'] = min($upload_config['max_file_size'], $convertToBytes(ini_get('upload_max_filesize')));
+    $upload_config['max_file_size'] = min($upload_config['max_file_size'], Utils::convertToBytes(ini_get('upload_max_filesize')));
     $upload_config['max_file_count'] = min($upload_config['max_file_count'], ini_get('max_file_uploads'));
 
     if ($request->getMethod() == 'GET') {
@@ -167,7 +163,7 @@ class ManagementController
       }
 
       // TODO: Check if we need to factor in a buffer to contain files AND other form data within this max post size
-      $upload_config['max_post_size'] = min($upload_config['max_file_size'] * $upload_config['max_file_count'], $convertToBytes(ini_get('post_max_size')));
+      $upload_config['max_post_size'] = min($upload_config['max_file_size'] * $upload_config['max_file_count'], Utils::convertToBytes(ini_get('post_max_size')));
 
       $extensions = [];
       foreach($upload_config['types'] as $e) {
@@ -201,7 +197,8 @@ class ManagementController
 
       return $twig->render($response, 'upload.html.twig', [
         'upload_config' => $upload_config,
-        'licenses' => $licenses
+        'licenses' => $licenses,
+        'upload_directory' => $_SESSION['clean_username']
       ]);
     } elseif ($request->getMethod() == 'POST') {
       $writeErrors = function (ResponseInterface $response, array $errors) {
@@ -322,7 +319,7 @@ class ManagementController
 
         // Verify the file size does not exceed the limit
         $file_size = $upload['file']->getSize();
-        if ($file_size > min($config->get('asset.upload.max_file_size'), $convertToBytes(ini_get('upload_max_filesize')))) {
+        if ($file_size > min($config->get('asset.upload.max_file_size'), Utils::convertToBytes(ini_get('upload_max_filesize')))) {
           $file_errors[$index][] = 'The maximum file size was exceeded.';
           continue;
         }
@@ -337,8 +334,8 @@ class ManagementController
         }
 
         // Build the temporary and final destination paths
-        $path_queue = $config->get('path.upload')."/{$_SESSION['bzid']}_{$filename}";
-        $path_final = $config->get('path.files')."/{$_SESSION['username']}/{$filename}";
+        $path_queue = $config->get('path.upload')."/{$_SESSION['bzid']}_$filename";
+        $path_final = $config->get('path.files')."/{$_SESSION['clean_username']}/$filename";
 
         // Verify that a file with the same name doesn't already exist in the queue for this user
         if (file_exists($path_queue)) {
@@ -502,7 +499,12 @@ class ManagementController
         if ($review['action'] === 'approve') {
           // Paths
           $path_queue = $config->get('path.upload')."/{$queue['bzid']}_{$queue['filename']}";
-          $path_final_dir = $config->get('path.files')."/{$queue['username']}";
+          $path_clean_dir = Utils::clean_username($queue['username']);
+          if (strlen($path_clean_dir) === 0) {
+            $errors[$id][] = 'The destination directory name is blank.';
+            continue;
+          }
+          $path_final_dir = $config->get('path.files')."/$path_clean_dir";
           $path_final = "$path_final_dir/{$queue['filename']}";
 
           // Verify the temporary file exists
