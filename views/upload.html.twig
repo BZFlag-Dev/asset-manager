@@ -2,6 +2,8 @@
 
 {% from 'macros.twig' import bytesToSize %}
 
+{% set page_title = 'Upload' %}
+
 {% block content %}
     <form action="{{ url_for('upload') }}" id="uploads" class="hide-other-licenses">
         <input type="hidden" name="success" value="1">
