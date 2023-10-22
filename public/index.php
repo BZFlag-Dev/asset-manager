@@ -26,6 +26,7 @@ use App\Database\DatabaseInterface;
 use DI\Bridge\Slim\Bridge;
 use League\Config\Configuration;
 use Nette\Schema\Expect;
+use PHPMailer\PHPMailer\PHPMailer;
 use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
 
@@ -55,6 +56,8 @@ $container->set(Configuration::class, function () {
       'game_name' => Expect::string('BZFlag'),
       // Site title (used for the page header and the page title)
       'title' => Expect::string('Asset Manager'),
+      // Base URL of the site, used for generating links to the final asset locations
+      'base_url' => Expect::string()->required(),
       // Base path
       'base_path' => Expect::string('/manage'),
       // Content takedown requests
@@ -102,7 +105,15 @@ $container->set(Configuration::class, function () {
       'from_address' => Expect::email()->required(),
       // When a new asset is uploaded for moderation, all emails here will
       // be notified.
-      'notify_addresses' => Expect::listOf(Expect::email())->required()
+      'notify_addresses' => Expect::listOf(Expect::email())->required(),
+
+      'smtp' => Expect::structure([
+        'host' => Expect::string('localhost'),
+        'port' => Expect::int(25)->min(1)->max(65535),
+        'username' => Expect::string(''),
+        'password' => Expect::string(''),
+        'encryption' => Expect::anyOf('null', 'ssl', 'tls')->default('null')
+      ])
     ]),
     'auth' => Expect::structure([
       // The URL to the BZFlag list server
@@ -123,6 +134,33 @@ $container->set(Configuration::class, function () {
 
 $container->set(DatabaseInterface::class, function (Configuration $config) {
   return new \App\Database\SQLite3($config);
+});
+
+$container->set(PHPMailer::class, function (Configuration $config) {
+  $smtp = $config->get('email.smtp');
+
+  $mailer = new PHPMailer(true);
+  $mailer->isSMTP();
+  $mailer->SMTPKeepAlive = true;
+  $mailer->SMTPSecure = match($smtp['encryption']) {
+    'ssl' => PHPMailer::ENCRYPTION_SMTPS,
+    'tls' => PHPMailer::ENCRYPTION_STARTTLS,
+    default => ''
+  };
+  $mailer->Host = $smtp['host'];
+  $mailer->Port = $smtp['port'];
+  $mailer->XMailer = null;
+  $mailer->setFrom($config->get('email.from_address'), "{$config->get('site.game_name')} {$config->get('site.title')}");
+  $mailer->WordWrap = 80;
+
+  // If we have a username/password, use authentication
+  if (!empty($smtp['username']) && !empty($smtp['password'])) {
+    $mailer->SMTPAuth = true;
+    $mailer->Username = $smtp['username'];
+    $mailer->Password = $smtp['password'];
+  }
+
+  return $mailer;
 });
 
 $container->set(Twig::class, function (Configuration $config) {

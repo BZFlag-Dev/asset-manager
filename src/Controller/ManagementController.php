@@ -25,7 +25,9 @@ namespace App\Controller;
 use App\Database\DatabaseInterface;
 use App\Extra\Utils;
 use Composer\Spdx\SpdxLicenses;
+use Exception;
 use League\Config\Configuration;
+use PHPMailer\PHPMailer\PHPMailer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Respect\Validation\Validator as v;
@@ -148,7 +150,7 @@ class ManagementController
     ]);
   }
 
-  public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
+  public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer): ResponseInterface
   {
     // Fetch the upload configuration options and clamp values to the PHP maximums
     $upload_config = $config->get('asset.upload');
@@ -259,6 +261,7 @@ class ManagementController
       // Track filenames so we can check for duplicates
       // TODO: This may be unnecessary once we start to move the temporary files into place.
       $filenames = [];
+      $successful_files = 0;
 
       foreach($files['assets'] as $index => $upload) {
         // Check the error status first
@@ -424,10 +427,41 @@ class ManagementController
               'license_url' => $d['license_url'],
               'license_text' => $d['license_text']
             ]);
-          } catch (\Exception) {
+          } catch (Exception) {
             // TODO: Log the error
             $file_errors[$index][] = 'A database error occurred while adding the file to the queue.';
           }
+
+          $successful_files++;
+        }
+      }
+
+      // If one or more files were successful, send a notification
+      if ($successful_files > 0) {
+        // Each email will use the same subject/message
+        $mailer->Subject = sprintf("%s %s - Uploaded Assets", $config->get('site.game_name'), $config->get('site.title'));
+        $mailer->msgHTML($twig->fetch('email/queue_notification.html.twig'));
+        $mailer->AltBody = $twig->fetch('email/queue_notification.text.twig');
+
+        foreach($config->get('email.notify_addresses') as $email_address) {
+          try {
+            $mailer->addAddress($email_address);
+          }
+          catch (Exception) {
+            // TODO: Log invalid address
+            continue;
+          }
+
+          // Try to send the email
+          try {
+            $mailer->send();
+          }
+          catch (Exception $e) {
+            $mailer->getSMTPInstance()->reset();
+          }
+
+          // Clear the address list
+          $mailer->clearAddresses();
         }
       }
 
@@ -450,7 +484,7 @@ class ManagementController
     }
   }
 
-  public function queue(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
+  public function queue(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer): ResponseInterface
   {
     if (!isset($_SESSION['username']) || $_SESSION['is_admin'] !== true) {
       return $response
@@ -483,6 +517,8 @@ class ManagementController
       $errors = [];
 
       $notifications = [];
+
+      $base_url = $config->get('site.base_url');
 
       foreach($data['review'] as $id => $review) {
         if (empty($review['action'])) {
@@ -534,12 +570,15 @@ class ManagementController
           // Move the temporary file to the final destination
           rename($path_queue, $path_final);
 
-          // TODO: Add it to the other database
+          // TODO: Add a record to the other database table
 
           // Remove it from the database
           $db->queue_remove($queue['id']);
 
-          $notifications[$queue['email']]['approved'][] = $queue['filename'];
+          $notifications[$queue['email']]['approved'][] = [
+            'filename' => $queue['filename'],
+            'final_url' => "$base_url/$path_clean_dir/{$queue['filename']}"
+          ];
 
         } elseif ($review['action'] === 'request' || $review['action'] === 'reject') {
           // Verify that we have the details for this review
@@ -573,7 +612,30 @@ class ManagementController
         }
       }
 
-      // TODO: Send email notifications by looping through $notifications[$queue['email']]
+      // Send notification emails
+      $mailer->Subject = sprintf("%s %s - Reviewed Assets", $config->get('site.game_name'), $config->get('site.title'));
+      foreach($notifications as $email_address => $reviews) {
+        try {
+          $mailer->addAddress($email_address);
+        }
+        catch (Exception) {
+          // TODO: Log error about invalid address
+          continue;
+        }
+        $mailer->msgHTML($twig->fetch('email/review_notification.html.twig', $reviews));
+        $mailer->AltBody = $twig->fetch('email/review_notification.text.twig', $reviews);
+
+        // Try to send the email
+        try {
+          $mailer->send();
+        }
+        catch (Exception) {
+          $mailer->getSMTPInstance()->reset();
+        }
+
+        // Clear the address list
+        $mailer->clearAddresses();
+      }
 
       return $response
         ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('queue'))

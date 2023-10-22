@@ -1,0 +1,37 @@
+{{ game_name | raw }} {{ site_title | raw }}
+
+Your uploaded assets have been reviewed.
+
+{% for review in approved %}
+{% if loop.first %}
+-----------------------------------------------------------------------------
+
+Approved: The following items were approved and are ready for use.
+
+{% endif %}
+{{ review.filename | raw }}
+{{ review.final_url | raw }}
+
+{% endfor %}
+{% for review in change_requested %}
+{% if loop.first %}
+-----------------------------------------------------------------------------
+
+Changes Requested: Changes were requested for the following items.
+
+{% endif %}
+{{ review.filename | raw }}
+{{ review.details | raw }}
+
+{% endfor %}
+{% for review in rejected %}
+{% if loop.first %}
+-----------------------------------------------------------------------------
+
+Rejected: The following items were rejected and have been deleted.
+
+{% endif %}
+{{ review.filename | raw }}
+{{ review.details | raw }}
+
+{% endfor %}

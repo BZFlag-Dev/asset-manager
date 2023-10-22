@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<body style="font-family: sans-serif">
+<h1>{{ game_name }} {{ site_title }}</h1>
+
+<p>Your uploaded assets have been reviewed.</p>
+
+{% for review in approved %}
+{% if loop.first %}
+    <h2>Approved</h2>
+    <p>The following items were approved and are ready for use.</p>
+    <div style="margin-left: 1em">
+{% endif %}
+        <p>
+            <strong>{{ review.filename | escape }}</strong><br>
+            <a href="{{ review.final_url | escape('html_attr') }}" target="_blank">{{ review.final_url | escape }}</a>
+        </p>
+
+{% if loop.last %}
+    </div>
+{% endif %}
+{% endfor %}
+
+{% for review in change_requested %}
+    {% if loop.first %}
+    <h2>Changes Requested</h2>
+    <p>Changes were requested for the following items.</p>
+    <div style="margin-left: 1em">
+    {% endif %}
+        <p>
+            <strong>{{ review.filename | escape }}</strong><br>
+            {{ review.details | escape | nl2br }}
+        </p>
+
+    {% if loop.last %}
+    </div>
+    {% endif %}
+{% endfor %}
+
+{% for review in rejected %}
+    {% if loop.first %}
+    <h2>Rejected</h2>
+    <p>The following items were rejected and have been deleted.</p>
+    <div style="margin-left: 1em">
+    {% endif %}
+        <p>
+            <strong>{{ review.filename | escape }}</strong><br>
+            {{ review.details | escape | nl2br }}
+        </p>
+
+    {% if loop.last %}
+    </div>
+    {% endif %}
+{% endfor %}
+</body>
+</html>

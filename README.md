@@ -10,7 +10,7 @@ Feature Progress
 * [X] Image thumbnail generator
 * [X] Ability to upload new assets
 * [X] Moderation interface for the asset queue
-* [ ] Email notifications
+* [X] Email notifications
   * [ ] Moderation queue reminders
 * [ ] Directory index for listing assets
 

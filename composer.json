@@ -25,6 +25,7 @@
         "php-di/slim-bridge": "^3.4",
         "league/config": "^1.2",
         "respect/validation": "^2.2",
-        "composer/spdx-licenses": "^1.5"
+        "composer/spdx-licenses": "^1.5",
+        "phpmailer/phpmailer": "^6.8"
     }
 }
