@@ -20,31 +20,15 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace App\Database;
+use App\Controller\DirectoryIndexController;
 
-use League\Config\Configuration;
+require __DIR__ . '/vendor/autoload.php';
 
-interface DatabaseInterface
-{
-  public function __construct(Configuration $config);
+require __DIR__ . '/src/common_bootstrap.php';
+global $app;
 
-  public function queue_get(): array;
+// Index page generation for the asset directories
+$app->get('{path:.*}', [DirectoryIndexController::class, 'generate'])->setName('directory_index');
 
-  public function queue_get_by_id(int $id): ?array;
-
-  public function queue_get_by_bzid(string $bzid): ?array;
-
-  public function queue_get_by_bzid_and_id(string $bzid, int $id): ?array;
-
-  public function queue_add(array $data): ?int;
-
-  public function queue_update(int $id, array $data): bool;
-
-  public function queue_remove(int $id): bool;
-
-  public function asset_get_by_path($path): ?array;
-
-  //public function asset_get_detail($path, $filename): ?array;
-
-  public function asset_add(array $data): ?int;
-}
+// Let's go!
+$app->run();

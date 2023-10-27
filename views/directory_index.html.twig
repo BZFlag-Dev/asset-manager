@@ -1,0 +1,47 @@
+{% from 'macros.twig' import bytesToSize %}
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="darkreader-lock">
+    <title>{% if page_title %}{{ page_title }} - {% endif %}{{ game_name }} {{ site_title }}</title>
+    <link href="/manage/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/manage/css/style.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <h1>Directory Index of /{% if path %}{{ path }}/{% endif %}</h1>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th scope="col">Filename</th>
+            <th scope="col">Size</th>
+            <th scope="col">Author</th>
+            <th scope="col">License</th>
+        </tr>
+        </thead>
+        <tbody>
+{% if path %}
+        <tr>
+            <td colspan="4"><a href="../">&lt;Parent Directory&gt;</a></td>
+        </tr>
+{% endif %}
+{% for directory in directories %}
+        <tr>
+            <td colspan="4"><a href="{{ directory.path }}">&lt;{{ directory.name }}&gt;</a></td>
+        </tr>
+{% endfor %}
+{% for asset in assets %}
+        <tr>
+            <td><a href="{{ asset.filename | escape('url') }}">{{ asset.filename | escape }}</a></td>
+            <td>{{ bytesToSize(asset.file_size) }}</td>
+            <td>{{ asset.author | escape }}</td>
+            <td>{{ asset.license_name | escape }}</td>
+        </tr>
+{% endfor %}
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

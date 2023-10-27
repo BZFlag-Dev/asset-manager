@@ -33,7 +33,7 @@ class SQLite3 implements DatabaseInterface
    */
   private PDO $db;
 
-  private const DATABASE_VERSION = 1;
+  private const DATABASE_VERSION = 2;
 
   public function __construct(Configuration $config)
   {
@@ -65,6 +65,12 @@ class SQLite3 implements DatabaseInterface
           $this->db->query(/** @lang SQLite */ 'CREATE TABLE queue (id INTEGER PRIMARY KEY AUTOINCREMENT, bzid TEXT NOT NULL, username TEXT NOT NULL, email TEXT NOT NULL, filename TEXT NOT NULL, file_size INTEGER NOT NULL, mime_type TEXT NOT NULL, author TEXT NOT NULL, source_url TEXT NOT NULL, license_id TEXT NOT NULL, license_name TEXT, license_url TEXT, license_text TEXT, details TEXT, change_requested INTEGER NOT NULL DEFAULT 0, UNIQUE(bzid, filename))');
           $this->db->query(/** @lang SQLite */ 'CREATE INDEX queue_bzid_idx ON queue (bzid)');
           $this->db->query(/** @lang SQLite */ 'CREATE INDEX queue_change_requested_idx ON queue (change_requested)');
+        }
+
+        // We added a table to store approved assets
+        if ($version < 2) {
+          $this->db->query(/** @lang SQLite */ 'CREATE TABLE asset (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, bzid TEXT NOT NULL, username TEXT NOT NULL, filename TEXT NOT NULL, file_size INTEGER NOT NULL, mime_type TEXT NOT NULL, author TEXT NOT NULL, source_url TEXT, license_id TEXT NOT NULL, license_name TEXT NOT NULL, license_url TEXT, license_text TEXT, UNIQUE(path, filename))');
+          $this->db->query(/** @lang SQLite */ 'CREATE INDEX asset_path_idx ON asset (path)');
         }
 
         // Update the user_version now that we've updated the schema
@@ -150,5 +156,26 @@ class SQLite3 implements DatabaseInterface
     $stmt = $this->db->prepare(/** @lang SQLite */ 'DELETE FROM queue WHERE id = :id');
     $stmt->execute(['id' => $id]);
     return $stmt->rowCount() === 1;
+  }
+
+  public function asset_get_by_path($path): ?array
+  {
+    $stmt = $this->db->prepare(/** @lang SQLite */ 'SELECT filename, file_size, author, license_name FROM asset WHERE path = :path');
+    $stmt->execute(['path' => $path]);
+    $rows = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+      $rows[ $row['filename'] ] = $row;
+    }
+    if (sizeof($rows) > 0) {
+      return $rows;
+    }
+    return null;
+  }
+
+  public function asset_add(array $data): ?int
+  {
+    $stmt = $this->db->prepare(/** @lang SQLite */ 'INSERT INTO asset (path, bzid, username, filename, file_size, mime_type, author, source_url, license_id, license_name, license_url, license_text) VALUES (:path, :bzid, :username, :filename, :file_size, :mime_type, :author, :source_url, :license_id, :license_name, :license_url, :license_text)');
+    $stmt->execute($data);
+    return (int)$this->db->lastInsertId();
   }
 }

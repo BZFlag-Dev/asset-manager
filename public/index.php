@@ -22,13 +22,8 @@ declare(strict_types=1);
 
 use App\Controller\AssetController;
 use App\Controller\ManagementController;
-use App\Database\DatabaseInterface;
-use DI\Bridge\Slim\Bridge;
 use League\Config\Configuration;
-use Nette\Schema\Expect;
 use PHPMailer\PHPMailer\PHPMailer;
-use Slim\Views\Twig;
-use Slim\Views\TwigMiddleware;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -43,98 +38,9 @@ session_start([
   'use_trans_sid' => false
 ]);
 
-$container = new \DI\Container();
-
-$container->set(Configuration::class, function () {
-  // Define config schema
-  $config = new Configuration([
-    'database' => Expect::structure([
-      'path' => Expect::string(dirname(__DIR__).'/var/data/db.sqlite3')
-    ]),
-    'site' => Expect::structure([
-      // The name of the game that these assets are being hosted for
-      'game_name' => Expect::string('BZFlag'),
-      // Site title (used for the page header and the page title)
-      'title' => Expect::string('Asset Manager'),
-      // Base URL of the site, used for generating links to the final asset locations
-      'base_url' => Expect::string()->required(),
-      // Base path
-      'base_path' => Expect::string('/manage'),
-      // Content takedown requests
-      'takedown_address' => Expect::email()->required()
-    ]),
-    // Paths should NOT end with a trailing slash
-    'path' => Expect::structure([
-      // Uploaded files are stored here before approval
-      'upload' => Expect::string(dirname(__DIR__).'/var/upload'),
-      // Approved files are moved here
-      'files' => Expect::string()->required()
-    ]),
-    'asset' => Expect::structure([
-      'image' => Expect::structure([
-        'max_width' => Expect::int(4096),
-        'max_height' => Expect::int(4096)
-      ]),
-      'upload' => Expect::structure([
-        'max_file_size' => Expect::int(2 * 1024 * 1024)->min(512 * 1024),
-        'max_file_count' => Expect::int(8)->min(1)->max(20),
-        'licenses' => Expect::structure([
-          // A short list of popular licenses
-          'popular' => Expect::listOf(Expect::string())
-            ->default(['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-3.0', 'CC-BY-SA-3.0', 'CC0-1.0', 'LGPL-2.1-only', 'MPL-2.0', 'MIT'])
-            ->mergeDefaults(false),
-          // A list of less popular asset licenses, but still popular in open-source
-          'common' => Expect::listOf(Expect::string())
-            ->default(['GPL-2.0-only', 'GPL-2.0-or-later', 'GPL-3.0-only', 'GPL-3.0-or-later', 'LGPL-2.0-only', 'LGPL-2.0-or-later',
-              'LGPL-2.1-or-later', 'LGPL-3.0-only', 'LGPL-3.0-or-later', 'MPL-1.0', 'MPL-1.1', 'BSD-3-Clause',
-              'BSD-2-Clause', 'AGPL-3.0-only', 'AGPL-3.0-or-later'])
-            ->mergeDefaults(false),
-          // Allow specifying an unlisted license by providing the name, and the URL or text
-          'allow_other' => Expect::bool(true),
-          // Allow showing all other OSI-approved licenses that weren't in the 'popular' or 'common' sections above
-          'allow_other_osi' => Expect::bool(false)
-        ]),
-        'types' => Expect::arrayOf(
-          Expect::anyOf(Expect::string(), Expect::listOf(Expect::string())),
-          Expect::string()
-        )->required()
-      ])
-    ]),
-    'email' => Expect::structure([
-      // Emails are sent from this address
-      'from_address' => Expect::email()->required(),
-      // When a new asset is uploaded for moderation, all emails here will
-      // be notified.
-      'notify_addresses' => Expect::listOf(Expect::email())->required(),
-
-      'smtp' => Expect::structure([
-        'host' => Expect::string('localhost'),
-        'port' => Expect::int(25)->min(1)->max(65535),
-        'username' => Expect::string(''),
-        'password' => Expect::string(''),
-        'encryption' => Expect::anyOf('null', 'ssl', 'tls')->default('null')
-      ])
-    ]),
-    'auth' => Expect::structure([
-      // The URL to the BZFlag list server
-      'list_url' => Expect::string('https://my.bzflag.org/db/'),
-      // An uppercase group name in the format of ORG.GROUP
-      'admin_group' => Expect::string()->required(),
-      // This should only be set to false for local test/dev environments
-      'check_ip' => Expect::bool(true)
-    ]),
-    'debug' => Expect::bool(false)
-  ]);
-
-  // Merge our configuration file information
-  $config->merge(require __DIR__ . '/../config.php');
-
-  return $config;
-});
-
-$container->set(DatabaseInterface::class, function (Configuration $config) {
-  return new \App\Database\SQLite3($config);
-});
+require __DIR__ . '/../src/common_bootstrap.php';
+global $container;
+global $app;
 
 $container->set(PHPMailer::class, function (Configuration $config) {
   $smtp = $config->get('email.smtp');
@@ -163,47 +69,21 @@ $container->set(PHPMailer::class, function (Configuration $config) {
   return $mailer;
 });
 
-$container->set(Twig::class, function (Configuration $config) {
-  $twig = Twig::create(__DIR__.'/../views', [
-    'cache' => __DIR__.'/../var/cache/twig',
-    'auto_reload' => true
-  ]);
-
-  if (!empty($_SESSION['username'])) {
-    $twig->offsetSet('username', $_SESSION['username']);
-    $twig->offsetSet('bzid', $_SESSION['bzid']);
-    $twig->offsetSet('is_admin', $_SESSION['is_admin']);
-  }
-
-  $twig->offsetSet('game_name', $config->get('site.game_name'));
-  $twig->offsetSet('site_title', $config->get('site.title'));
-
-  return $twig;
-});
-
-// Create our application
-$app = Bridge::create($container);
-
 // Grab a pointer to the configuration
 $config = $app->getContainer()->get(Configuration::class);
 
 // Set our base path
 $app->setBasePath($config->get('site.base_path'));
 
-// Add middleware
-$app->add(TwigMiddleware::createFromContainer($app, Twig::class));
-
-// Set up error handling
-// TODO: Logging errors to a file
-$errorMiddleware = $app->addErrorMiddleware($config->get('debug'), true, true);
-
-// Define routes
+// Management routes
 $app->get('/', [ManagementController::class, 'home'])->setName('home');
 $app->get('/login[/{token}/{username}]', [ManagementController::class, 'login'])->setName('login');
 $app->get('/logout', [ManagementController::class, 'logout'])->setName('logout');
 $app->get('/terms', [ManagementController::class, 'terms'])->setName('terms');
-$app->map(['GET', 'POST'], '/upload', [ManagementController::class, 'upload'])->setName('upload');
-$app->map(['GET', 'POST'], '/queue', [ManagementController::class, 'queue'])->setName('queue');
+$app->get('/upload', [ManagementController::class, 'upload'])->setName('upload');
+$app->post('/upload', [ManagementController::class, 'upload_process']);
+$app->get('/queue', [ManagementController::class, 'queue'])->setName('queue');
+$app->post('/queue', [ManagementController::class, 'queue_process']);
 $app->get('/view/{bzid}/{queueid}[/{width}/{height}]', [AssetController::class, 'view'])->setName('view');
 
 // Let's go!

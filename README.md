@@ -9,10 +9,11 @@ Feature Progress
 * [X] Queue database
 * [X] Image thumbnail generator
 * [X] Ability to upload new assets
+  * [ ] Editing asset information after a change is requested
 * [X] Moderation interface for the asset queue
 * [X] Email notifications
   * [ ] Moderation queue reminders
-* [ ] Directory index for listing assets
+* [X] Directory index for listing assets
 
 Requirements
 ------------
@@ -64,4 +65,34 @@ return [
     ]
   ]
 ];
+```
+
+Create a symbolic link to directory_index.php inside ```/var/www/assets/public```:
+```shell
+ln -s /var/www/asset-manager/directory_index.php /var/www/assets/public/index.php
+```
+
+Create a web server configuration, such as something like this for Apache:
+```apacheconf
+<VirtualHost *:80>
+        ServerName assets.example.com
+
+        DocumentRoot /var/www/assets/public
+        <Directory /var/www/assets/public>
+                Require all granted
+                DirectoryIndex /index.php
+        </Directory>
+
+
+        Alias /manage /var/www/asset-manager/public
+        <Directory /var/www/asset-manager/public>
+                Require all granted
+
+                RewriteEngine On
+                RewriteBase /manage
+                RewriteCond %{REQUEST_FILENAME} !-f
+                RewriteCond %{REQUEST_FILENAME} !-d
+                RewriteRule ^ index.php [QSA,L]
+        </Directory>
+</VirtualHost>
 ```
