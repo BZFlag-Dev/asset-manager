@@ -144,6 +144,11 @@ $app = Bridge::create($container);
 // Grab a pointer to the configuration
 $config = $app->getContainer()->get(Configuration::class);
 
+// Set our base path if we're in the manager
+if (defined('IN_MANAGER')) {
+  $app->setBasePath($config->get('site.base_path'));
+}
+
 // Add middleware
 $app->add(TwigMiddleware::createFromContainer($app, Twig::class));
 

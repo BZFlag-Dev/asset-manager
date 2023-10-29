@@ -25,6 +25,8 @@ use App\Controller\ManagementController;
 use League\Config\Configuration;
 use PHPMailer\PHPMailer\PHPMailer;
 
+const IN_MANAGER = true;
+
 require __DIR__ . '/../vendor/autoload.php';
 
 $session_save_path = ini_get('session.save_path').DIRECTORY_SEPARATOR.'asset-manager';
@@ -68,12 +70,6 @@ $container->set(PHPMailer::class, function (Configuration $config) {
 
   return $mailer;
 });
-
-// Grab a pointer to the configuration
-$config = $app->getContainer()->get(Configuration::class);
-
-// Set our base path
-$app->setBasePath($config->get('site.base_path'));
 
 // Management routes
 $app->get('/', [ManagementController::class, 'home'])->setName('home');
