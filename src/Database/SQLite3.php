@@ -160,7 +160,7 @@ class SQLite3 implements DatabaseInterface
 
   public function asset_get_by_path($path): ?array
   {
-    $stmt = $this->db->prepare(/** @lang SQLite */ 'SELECT filename, file_size, author, license_name FROM asset WHERE path = :path');
+    $stmt = $this->db->prepare(/** @lang SQLite */ 'SELECT username, filename, file_size, mime_type, author, license_id, license_name, license_url, license_text FROM asset WHERE path = :path');
     $stmt->execute(['path' => $path]);
     $rows = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {

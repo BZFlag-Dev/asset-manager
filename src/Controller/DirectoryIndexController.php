@@ -59,8 +59,8 @@ class DirectoryIndexController
       // Is this a directory?
       if ($info->isDir()) {
         $directories[] = [
-          'path' => "{$info->getFilename()}/",
-          'name' => $info->getFilename()
+          'path' => "$filename/",
+          'name' => $filename
         ];
       } elseif ($info->isFile()) {
         if (isset($data[$filename])) {
@@ -69,8 +69,8 @@ class DirectoryIndexController
           $assets[] = [
             'filename' => $filename,
             'file_size' => $info->getSize(),
-            'author' => 'Unknown',
-            'license_name' => 'Unknown'
+            'author' => '(Unknown)',
+            'license_name' => '(Unknown)'
           ];
         }
       }
@@ -80,10 +80,12 @@ class DirectoryIndexController
     uasort($directories, fn ($a, $b) => strcmp($a['path'], $b['path']));
     uasort($assets, fn ($a, $b) => strcmp($a['filename'], $b['filename']));
 
-    return $twig->render($response, 'directory_index.html.twig', compact(
-      'path',
-      'directories',
-      'assets'
-    ));
+    return $twig->render($response, 'directory_index.html.twig', [
+      'path' => $path,
+      'directories' => $directories,
+      'assets' => $assets,
+      'takedown_address' => $config->get('site.takedown_address'),
+      'base_path' => $config->get('site.base_path')
+    ]);
   }
 }

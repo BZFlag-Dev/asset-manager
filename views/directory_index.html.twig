@@ -6,42 +6,79 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="darkreader-lock">
     <title>{% if page_title %}{{ page_title }} - {% endif %}{{ game_name }} {{ site_title }}</title>
-    <link href="/manage/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/manage/css/style.css" rel="stylesheet">
+    <link href="{{ base_path }}/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ base_path }}/css/style.css" rel="stylesheet">
 </head>
 <body>
-<div class="container">
+<div class="container bg-body-tertiary border border-top-0">
     <h1>Directory Index of /{% if path %}{{ path }}/{% endif %}</h1>
-    <table class="table table-striped">
+</div>
+<div class="container p-3 pb-0 mb-3 bg-dark bg-opacity-75 border border-top-0">
+    <table class="table table-bordered">
         <thead>
         <tr>
             <th scope="col">Filename</th>
             <th scope="col">Size</th>
             <th scope="col">Author</th>
             <th scope="col">License</th>
+            <th scope="col">Uploader</th>
         </tr>
         </thead>
         <tbody>
 {% if path %}
         <tr>
-            <td colspan="4"><a href="../">&lt;Parent Directory&gt;</a></td>
+            <td><a href="../">&lt;Parent Directory&gt;</a></td>
+            <td>Directory</td>
+            <td></td>
+            <td></td>
+            <td></td>
         </tr>
 {% endif %}
 {% for directory in directories %}
         <tr>
-            <td colspan="4"><a href="{{ directory.path }}">&lt;{{ directory.name }}&gt;</a></td>
+            <td><a href="{{ directory.path }}">&lt;{{ directory.name }}&gt;</a></td>
+            <td>Directory</td>
+            <td></td>
+            <td></td>
+            <td></td>
         </tr>
 {% endfor %}
+{% set has_legacy = false %}
 {% for asset in assets %}
         <tr>
-            <td><a href="{{ asset.filename | escape('url') }}">{{ asset.filename | escape }}</a></td>
+            <td><a href="{{ asset.filename | escape('html_attr') }}">{{ asset.filename | escape }}</a></td>
             <td>{{ bytesToSize(asset.file_size) }}</td>
             <td>{{ asset.author | escape }}</td>
-            <td>{{ asset.license_name | escape }}</td>
+            <td>{{ asset.license_name | escape }}{% if asset.license_id == 'Legacy' %}*{% set has_legacy = true %}{% elseif asset.license_id == 'Other' %} <span class="expand" data-index="{{ loop.index }}">🛈</span>{% endif %}</td>
+            <td>{{ asset.username | escape }}</td>
         </tr>
+{% if asset.license_id == 'Other' %}
+        <tr class="d-none" data-index="{{ loop.index }}">
+            <td colspan="4">
+                {% if asset.license_url %}
+                    <strong>License URL:</strong> <a href="{{ asset.license_url | escape('html_attr') }}" target="_blank" rel="noreferrer">{{ asset.license_url | escape }}</a>{% if asset.license_text %}<br>{% endif %}
+                {% endif %}
+                {% if asset.license_text %}
+                    <strong>License Text:</strong><br>
+                    <code><pre class="pre-wrap">{{ asset.license_text | escape}}</pre></code>
+                {% endif %}
+            </td>
+        </tr>
+{% endif %}
 {% endfor %}
         </tbody>
     </table>
+    {% if has_legacy %}<small>* License information from older site may be less precise than the updated site.</small>{% endif %}
+    <div class="small text-center border-top mt-4 py-3">
+        Send any content takedown requests to <a href="mailto:{{ takedown_address }}">{{ takedown_address }}</a>
+    </div>
 </div>
+<script>
+    document.querySelectorAll('.expand').forEach((el) => {
+        el.addEventListener('click', (ev) => {
+            document.querySelector('tr[data-index="' + ev.target.dataset['index'] + '"]').classList.toggle('d-none');
+        });
+    });
+</script>
 </body>
 </html>
