@@ -1,5 +1,7 @@
 {% extends 'layout.html.twig' %}
 
+{% from 'macros.twig' import bytesToSize %}
+
 {% block content %}
     The {{ site_title }} is a tool for BZFlag map authors.  It is to allow map authors to upload textures for use in their maps. Note that:
     <ul>
@@ -8,12 +10,96 @@
     </ul>
     Therefore, by hosting your images here, you can be sure that players on your map can always view it the way it was intended, textures and all. They won't have to edit their downloadaccess.txt file to enable your textures.
 
-    {% if username %}
+    {% if pending %}
         <hr>
-
-        {% for item in pending %}
+        {% for asset in pending|filter(v => v.change_requested == 1) %}
             {% if loop.first %}
-                Here are your images that are currently pending moderation:<br>
+                <form action="{{ url_for('submit_changes') }}" id="changes" class="hide-other-licenses">
+                <div class="my-3">Changes have been requested for the following uploads:</div>
+            {% endif %}
+                    <div class="asset mb-3 pb-3 border-bottom">
+                        <input type="hidden" class="asset_index" value="{{ asset.id }}">
+                        <div class="row mb-3">
+                            <div class="col me-3">
+                                <h3>Changes Requested</h3>
+                                {{ asset.details|escape|nl2br }}
+                            </div>
+                            <div class="col me-3 position-relative file-info">
+                                <h3>File Information</h3>
+                                <canvas class="file-preview d-none position-absolute" id="preview_{{ asset.id }}" width="512" height="512"></canvas>
+                                <div class="file-metadata">
+                                    Filename:<br>
+                                    <span class="file-name font-monospace bg-dark-subtle p-1">{{ asset.filename }}</span><br>
+                                    File size: <span class="file-size">{{ bytesToSize(asset.file_size) }}</span><br>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <h3>Source Information</h3>
+                                <label class="form-label" for="author">Author Name:</label>
+                                <input type="text" class="form-control" id="author" name="assets[{{ asset.id }}][author]" required value="{{ asset.author|escape('html_attr') }}">
+
+                                <label class="form-label" for="source_url">Source URL:</label>
+                                <input type="url" class="form-control" id="source_url" name="assets[{{ asset.id }}][source_url]" value="{{ asset.source_url|escape('html_attr') }}">
+                            </div>
+                        </div>
+                        <div class="row d-none asset-error">
+                            <div class="col text-danger-emphasis">
+                                <strong>Errors:</strong><br>
+                                <ul></ul>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <label class="form-label" for="license">License for this file:</label>
+                                <select class="form-select license-select" id="license" name="assets[{{ asset.id }}][license]" required>
+                                    <option value="">Select a license</option>
+                                    <optgroup label="Popular Licenses">
+                                        {% for id, name in licenses.popular %}
+                                            <option value="{{ id }}"{% if id == asset.license_id %} selected{% endif %}>{{ name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    <optgroup label="Common Licenses">
+                                        {% for id, name in licenses.common %}
+                                            <option value="{{ id }}"{% if id == asset.license_id %} selected{% endif %}>{{ name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% if upload_config.licenses.allow_other %}
+                                        <option value="Other"{% if 'Other' == asset.license_id %} selected{% endif %}>Other Approved License</option>
+                                    {% endif %}
+                                    <optgroup label="Other OSI-Approved Licenses">
+                                        {% for id, name in licenses.other %}
+                                            <option value="{{ id }}"{% if id == asset.license_id %} selected{% endif %}>{{ name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                </select>
+
+                                <div class="custom-license d-none">
+                                    <label class="form-label" for="license_name">License Name:</label>
+                                    <input type="text" class="form-control license-name" id="license_name" name="assets[{{ asset.id }}][license_name]" value="{{ asset.license_name|escape('html_attr') }}">
+
+                                    <label class="form-label" for="license_url">License URL:</label>
+                                    <input type="text" class="form-control license-url" id="license_url" name="assets[{{ asset.id }}][license_url]" value="{{ asset.license_url|escape('html_attr') }}">
+                                </div>
+                            </div>
+                            <div class="col custom-license d-none">
+                                <label class="form-label" for="license_text">License Text:</label>
+                                <textarea class="form-control license-text" id="license_text" name="assets[{{ asset.id }}][license_text]" rows="8">{{ asset.license_text }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+            {% if loop.last %}
+                    <div class="row mb-5">
+                        <div class="col">
+                            <button type="submit" class="btn btn-primary mt-3" id="btn_upload_assets">Submit Changes</button>
+                        </div>
+                    </div>
+                </form>
+            {% endif %}
+        {% endfor %}
+
+        {% for asset in pending|filter(v => v.change_requested == 0) %}
+            {% if loop.first %}
+                <div class="my-3">Here are your images that are currently pending moderation:</div>
                 <table class="table table-striped table-bordered mt-2 mb-0">
                 <thead>
                     <tr>
@@ -25,27 +111,41 @@
             {% endif %}
                     <tr>
                         <td>
-                            {% if item.mime_type starts with 'image/' %}
-                            <img src="{{ url_for('view', {'bzid': item.bzid, 'queueid': item.id, width: 128, height: 128}) }}" alt="{{ item.filename }} by {{ item.author }}">
+                            {% if asset.mime_type starts with 'image/' %}
+                            <img src="{{ url_for('view', {'bzid': asset.bzid, 'queueid': asset.id, width: 128, height: 128}) }}" alt="{{ asset.filename }} by {{ asset.author }}">
                             {% else %}
                             Preview unavailable for this file type
                             {% endif %}
                         </td>
                         <td>
-                            <strong>Filename:</strong> {{ item.filename }}<br>
-                            <strong>Author Name:</strong> {{ item.author }}<br>
-                            <strong>License:</strong> {{ item.license_name }}<br>
-                            {% if item.license_url %}<strong>License URL:</strong> <a href="{{ item.license_url }}" target="_blank" rel="noopener">View License</a><br>{% endif %}
-                            {% if item.license_text %}<strong>License Text:</strong>{{ item.license_text | nl2br }}{% endif %}
+                            <strong>Filename:</strong> {{ asset.filename }}<br>
+                            <strong>Author Name:</strong> {{ asset.author }}<br>
+                            <strong>License:</strong> {{ asset.license_name }}<br>
+                            {% if asset.license_url %}<strong>License URL:</strong> <a href="{{ asset.license_url }}" target="_blank" rel="noopener">View License</a><br>{% endif %}
+                            {% if asset.license_text %}<strong>License Text:</strong>{{ asset.license_text | nl2br }}{% endif %}
                         </td>
                     </tr>
             {% if loop.last %}
                 </tbody>
                 </table>
             {% endif %}
-        {% else %}
-            You currently have no images pending moderation.
         {% endfor %}
+        {% if pending|length == 0 %}
+            <hr>
+            You currently have no images pending moderation.
+        {% endif %}
     {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ base_path() }}/js/util.js"></script>
+<script src="{{ base_path() }}/js/home.js"></script>
+{% if pending %}
+<script>
+    {% for asset in pending|filter(v => v.change_requested == 1 and v.mime_type starts with 'image/') %}
+    previewImage(document.getElementById('preview_{{ asset.id }}'), '{{ url_for('view', {'bzid': asset.bzid, 'queueid': asset.id, width: 256, height: 256}) | escape('js') }}');
+    {% endfor %}
+</script>
+{% endif %}
 {% endblock %}

@@ -54,7 +54,7 @@
                     <input type="text" class="form-control" id="author" name="assets[%ASSET_INDEX%][author]" required>
 
                     <label class="form-label" for="source_url">Source URL:</label>
-                    <input type="text" class="form-control" id="source_url" name="assets[%ASSET_INDEX%][source_url]">
+                    <input type="url" class="form-control" id="source_url" name="assets[%ASSET_INDEX%][source_url]">
                 </div>
             </div>
             <div class="row d-none file-error">
@@ -156,23 +156,6 @@
             </div>
         </div>
     </form>
-
-    <div id="dialog" class="modal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="dialog_title">Error Information</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="dialog_message">
-
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
 {% endblock %}
 
 {% block scripts %}

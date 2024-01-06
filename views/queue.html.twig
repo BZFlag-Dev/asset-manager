@@ -5,7 +5,7 @@
 {% set page_title = 'Queue' %}
 
 {% block content %}
-    <form action="{{ url_for('queue') }}" id="uploads">
+    <form action="{{ url_for('queue') }}" id="uploads" method="post">
         {% for asset in queue|filter(v => v.change_requested == 0) %}
         <div class="mb-3 pb-3 asset">
             <div class="row mb-3">
@@ -65,6 +65,15 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if asset.details %}
+            <div class="row mb-3 ms-3 border-start border-4 border-danger">
+                <div class="col">
+                    <h3>Changes Requested</h3>
+                    {{ asset.details|escape|nl2br }}
+                </div>
+            </div>
+            {% endif %}
 
             <div class="row">
                 <div class="col">

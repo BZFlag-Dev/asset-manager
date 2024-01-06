@@ -56,3 +56,67 @@ function addPreviewEvents(el) {
         }
     });
 }
+
+function updateLicense(ev) {
+    // Sanity check to make sure we're operating on the select element
+    if (ev.target.tagName !== 'SELECT')
+        return;
+
+    // Loop through all the custom license elements in for this file
+    ev.target.closest('.upload').querySelectorAll('.custom-license').forEach((el) => {
+        el.classList.toggle('d-none', ev.target.value !== 'Other');
+    });
+
+    // Also validate the license
+    validateLicense(ev);
+}
+
+function validateLicense(ev) {
+    const upload_container = ev.target.closest('.upload');
+    const license_selector = upload_container.querySelector('.license-select');
+
+    // If the license is set to "Other OSI-Approved License", verify that at least name, and then URL or text is provided
+    if (license_selector.value === 'Other') {
+        if (upload_container.querySelector('.license-name').value.length === 0) {
+            license_selector.setCustomValidity('When using another approved license, the license name must be provided.');
+            return;
+        }
+        if (upload_container.querySelector('.license-url').value.length === 0 && upload_container.querySelector('.license-text').value.length === 0) {
+            license_selector.setCustomValidity('When using another approved license, the license URL or text must be provided.');
+            return;
+        }
+    }
+
+    // If we got this far, it's valid
+    license_selector.setCustomValidity('');
+}
+
+// Custom form validation tooltips
+function setInvalidMessage(selector, message) {
+    document.querySelectorAll(selector).forEach((el) => {
+        el.addEventListener('invalid', function () {
+            this.setCustomValidity(message)
+        });
+        el.addEventListener('input', function () {
+            this.setCustomValidity('')
+        });
+    });
+}
+
+function showDialog(title, message) {
+    const dialog = new bootstrap.Modal(document.getElementById('dialog'), {})
+    const dialog_title = document.getElementById('dialog_title');
+    const dialog_message = document.getElementById('dialog_message');
+
+    dialog_title.innerText = title;
+    dialog_message.innerHTML = '';
+    if (!Array.isArray(message)) {
+        message = [message]
+    }
+    for (let i = 0; i < message.length; ++i) {
+        const p = document.createElement('p');
+        p.innerText = message[i];
+        dialog_message.append(p);
+    }
+    dialog.show();
+}

@@ -22,6 +22,7 @@ declare(strict_types=1);
 
 use App\Controller\AssetController;
 use App\Controller\ManagementController;
+use App\Middleware\RequireAuth;
 use League\Config\Configuration;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -43,6 +44,11 @@ session_start([
 require __DIR__ . '/../src/common_bootstrap.php';
 global $container;
 global $app;
+
+$app->add(RequireAuth::class);
+
+// The RoutingMiddleware should be added after our RequireAuth middleware so routing is performed first
+$app->addRoutingMiddleware();
 
 $container->set(PHPMailer::class, function (Configuration $config) {
   $smtp = $config->get('email.smtp');
@@ -73,6 +79,7 @@ $container->set(PHPMailer::class, function (Configuration $config) {
 
 // Management routes
 $app->get('/', [ManagementController::class, 'home'])->setName('home');
+$app->post('/changes', [ManagementController::class, 'changes'])->setName('submit_changes');
 $app->get('/login[/{token}/{username}]', [ManagementController::class, 'login'])->setName('login');
 $app->get('/logout', [ManagementController::class, 'logout'])->setName('logout');
 $app->get('/terms', [ManagementController::class, 'terms'])->setName('terms');

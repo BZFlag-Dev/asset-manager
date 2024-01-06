@@ -22,6 +22,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Attribute\AuthRequirement;
+use App\Attribute\JSONResponse;
 use App\Database\DatabaseInterface;
 use App\Extra\Utils;
 use Composer\Spdx\SpdxLicenses;
@@ -38,27 +40,179 @@ use Slim\Views\Twig;
 
 class ManagementController
 {
-  public function home(ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
+  #[AuthRequirement('none')]
+  public function home(ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx, Configuration $config): ResponseInterface
   {
     $queue = null;
+    $licenses = null;
+    $upload_config = null;
+
     if (!empty($_SESSION['bzid'])) {
       $queue = $db->queue_get_by_bzid($_SESSION['bzid']);
-      foreach($queue as &$asset) {
-        if ($asset['license_id'] !== 'Other') {
-          if ($spdx->validate($asset['license_id'])) {
-            $asset['license_name'] = $spdx->getLicenseByIdentifier($asset['license_id'])[0];
-          } else {
-            $asset['license_name'] = 'Unknown or invalid';
+      $upload_config = $config->get('asset.upload');
+      if ($queue) {
+        $licenses = [
+          'popular' => array_fill_keys($upload_config['licenses']['popular'], ''),
+          'common' => array_fill_keys($upload_config['licenses']['common'], ''),
+          'other' => []
+        ];
+
+        foreach ($spdx->getLicenses() as $license) {
+          // If this license id is deprecated, skip it
+          if ($license[3] === true) {
+            continue;
+          }
+
+          // If it's a popular or common license, fill in the name
+          if (array_key_exists($license[0], $licenses['popular'])) {
+            $licenses['popular'][$license[0]] = $license[1];
+          } elseif (array_key_exists($license[0], $licenses['common'])) {
+            $licenses['common'][$license[0]] = $license[1];
+          } // Otherwise, if it's an OSI-approved license, put it under Other
+          elseif ($upload_config['licenses']['allow_other_osi'] && $license[2] === true) {
+            $licenses['other'][$license[0]] = $license[1];
+          }
+        }
+
+        foreach($queue as &$asset) {
+          // Figure out what license name to show on assets pending approval
+          if ($asset['change_requested'] === 0 && $asset['license_id'] !== 'Other') {
+            if ($spdx->validate($asset['license_id'])) {
+              $asset['license_name'] = $spdx->getLicenseByIdentifier($asset['license_id'])[0];
+            } else {
+              $asset['license_name'] = 'Unknown or invalid';
+            }
           }
         }
       }
     }
 
     return $twig->render($response, 'home.html.twig', [
-      'pending' => $queue
+      'pending' => $queue,
+      'licenses' => $licenses,
+      'upload_config' => $upload_config
     ]);
   }
 
+  private function validate_asset_information(SpdxLicenses $spdx, array $upload_config, array $asset): array
+  {
+    $errors = [];
+
+    // Require an author name
+    if (!v::notEmpty()->validate($asset['author'])) {
+      $errors[] = 'The author name was not provided.';
+    }
+
+    // Verify the source URL, if provided, is actually a URL
+    if (!v::optional(v::url())->validate($asset['source_url'])) {
+      $errors[] = 'The source URL was not a valid URL.';
+    }
+
+    // Require a license
+    if (!v::notEmpty()->validate($asset['license'])) {
+      $errors[] = 'No license was selected.';
+    }
+    // If we allow other licenses, check if they provided the name, and either the URL or text
+    elseif ($asset['license'] === 'Other') {
+      if (!$upload_config['licenses']['allow_other']) {
+        $errors[] = 'Other licenses are not allowed.';
+      }
+      // Verify that the license name is provided
+      if (!v::notEmpty()->validate($asset['license_name'])) {
+        $errors[] = 'The license name was not provided.';
+      }
+
+      // Verify either the license URL or text are provided
+      if (!(v::optional(v::url()))->validate($asset['license_url'])) {
+        $errors[] = 'The license URL was not a valid URL.';
+      } elseif (!(v::notEmpty()->validate($asset['license_url']) || v::notEmpty()->validate($asset['license_text']))) {
+        $errors[] = 'The license URL or text was not provided. One or both must be provided when "Other Approved Licensed" is selected.';
+      }
+    } else {
+      // Check if it's a popular or common license, or, if enabled, another OSI-approved license
+      if (
+        !in_array($asset['license'], $upload_config['licenses']['popular'], true) &&
+        !in_array($asset['license'], $upload_config['licenses']['common'], true) &&
+        !($upload_config['licenses']['allow_other_osi'] && $spdx->validate($asset['license']) && $spdx->isOsiApprovedByIdentifier($asset['license']))
+      ) {
+        $errors[] = 'An invalid license was selected.';
+      }
+    }
+
+    return $errors;
+  }
+
+  #[AuthRequirement('user')]
+  #[JSONResponse]
+  public function changes(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer): ResponseInterface
+  {
+    // Grab a copy of the form data
+    $data = $request->getParsedBody();
+
+    $upload_config = $config->get('asset.upload');
+
+    $return = [];
+
+    // Loop through
+    foreach ($data['assets'] as $id => $asset) {
+      // Fetch the current information
+      $row = $db->queue_get_by_bzid_and_id($_SESSION['bzid'], (int)$id);
+
+      if ($row === null) {
+        $return['asset_errors'][$id][] = 'Could not locate this asset in the database';
+        continue;
+      }
+
+      // If changes aren't requested, skip this one
+      if ($row['change_requested'] !== 1) {
+        continue;
+      }
+
+      // Check if there were any changes made
+      $has_changes = (
+        $asset['author'] != $row['author'] ||
+        $asset['source_url'] != $row['source_url'] ||
+        $asset['license'] != $row['license_id'] ||
+        $asset['license_name'] != $row['license_name'] ||
+        $asset['license_url'] != $row['license_url'] ||
+        $asset['license_text'] != $row['license_text']
+      );
+
+      if ($has_changes) {
+        $errors = $this->validate_asset_information($spdx, $upload_config, $asset);
+
+        // If we had errors, add those
+        if ($errors) {
+          $return['asset_errors'][$id] = $errors;
+        }
+        // Otherwise, update the queue item
+        else {
+          // NOTE: This doesn't pass $asset directly because a malicious user could include extra fields
+          $db->queue_update($id, [
+            'author' => $asset['author'],
+            'source_url' => $asset['source_url'],
+            'license_id' => $asset['license'],
+            'license_name' => $asset['license_name'],
+            'license_url' => $asset['license_url'],
+            'license_text' => $asset['license_text'],
+            'change_requested' => 0
+          ]);
+        }
+      } else {
+        $return['asset_errors'][$id][] = 'No changes were made.';
+      }
+    }
+
+    $return['success'] = empty($return['asset_errors']);
+
+    // TODO: Sent notification emails to the admins
+
+    $response->getBody()->write(json_encode($return));
+    return $response
+      ->withHeader('Content-Type', 'application/json');
+  }
+
+  #[AuthRequirement('none')]
   public function login(App $app, ResponseInterface $response, Twig $twig, Configuration $config, $token = '', $username = ''): ResponseInterface
   {
     if (empty($token) || empty($username)) {
@@ -68,11 +222,11 @@ class ManagementController
     }
 
     // Check the token
-    $checktokens = urlencode($username);
+    $checktokens = urldecode($username);
     if ($config->get('auth.check_ip')) {
       $checktokens .= '@'.$_SERVER['REMOTE_ADDR'];
     }
-    $checktokens .= '='.urlencode($token);
+    $checktokens .= '='.urldecode($token);
 
     $ch = curl_init();
     curl_setopt_array($ch, [
@@ -128,6 +282,9 @@ class ManagementController
       ]);
     }
 
+    // Store the user-agent so that we can compare later for session validation
+    $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+
     return $twig->render($response, 'login.html.twig', [
       'username' => $_SESSION['username'],
       'bzid' => $_SESSION['bzid'],
@@ -135,6 +292,7 @@ class ManagementController
     ]);
   }
 
+  #[AuthRequirement('none')]
   public function logout(App $app, ResponseInterface $response): ResponseInterface
   {
     // Clear the session and return to the homepage
@@ -145,6 +303,7 @@ class ManagementController
         ->withStatus(302);
   }
 
+  #[AuthRequirement('none')]
   public function terms(ResponseInterface $response, Twig $twig, Configuration $config): ResponseInterface
   {
     return $twig->render($response, 'terms.html.twig', [
@@ -152,18 +311,13 @@ class ManagementController
     ]);
   }
 
+  #[AuthRequirement('user')]
   public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, SpdxLicenses $spdx): ResponseInterface
   {
     // Fetch the upload configuration options and clamp values to the PHP maximums
     $upload_config = $config->get('asset.upload');
     $upload_config['max_file_size'] = min($upload_config['max_file_size'], Utils::convertToBytes(ini_get('upload_max_filesize')));
     $upload_config['max_file_count'] = min($upload_config['max_file_count'], ini_get('max_file_uploads'));
-
-    if (!isset($_SESSION['username'])) {
-      return $response
-        ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('home'))
-        ->withStatus(302);
-    }
 
     // TODO: Check if we need to factor in a buffer to contain files AND other form data within this max post size
     $upload_config['max_post_size'] = min($upload_config['max_file_size'] * $upload_config['max_file_count'], Utils::convertToBytes(ini_get('post_max_size')));
@@ -204,6 +358,8 @@ class ManagementController
     ]);
   }
 
+  #[AuthRequirement('user')]
+  #[JSONResponse]
   public function upload_process(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer): ResponseInterface
   {
     // Fetch the upload configuration options and clamp values to the PHP maximums
@@ -219,13 +375,6 @@ class ManagementController
       return $response
         ->withHeader('Content-Type', 'application/json');
     };
-
-    // If we don't have a valid session, throw an error back
-    if (!isset($_SESSION['username'])) {
-      return $writeErrors($response, [
-        'The login session has expired. Please log in and try again.'
-      ]);
-    }
 
     // Grab a copy of the form data
     $data = $request->getParsedBody();
@@ -272,6 +421,8 @@ class ManagementController
     $successful_files = 0;
 
     foreach($files['assets'] as $index => $upload) {
+      $file_errors[$index] = [];
+
       // Check the error status first
       $error = $upload['file']->getError();
       if ($error != UPLOAD_ERR_OK) {
@@ -369,46 +520,10 @@ class ManagementController
       // Grab a short reference to this asset's information
       $d = &$data['assets'][$index];
 
-      // Require an author name
-      if (!v::notEmpty()->validate($d['author'])) {
-        $file_errors[$index][] = 'The author name was not provided.';
-      }
-
-      // Verify the source URL, if provided, is actually a URL
-      if (!v::optional(v::url())->validate($d['source_url'])) {
-        $file_errors[$index][] = 'The source URL was not a valid URL.';
-      }
-
-      // Require a license
-      if (!v::notEmpty()->validate($d['license'])) {
-        $file_errors[$index][] = 'No license was selected.';
-      }
-      // If we allow other licenses, check if they provided the name, and either the URL or text
-      elseif ($d['license'] === 'Other') {
-        if (!$upload_config['licenses']['allow_other']) {
-          $file_errors[$index][] = 'Other licenses are not allowed.';
-        }
-        // Verify that the license name is provided
-        if (!v::notEmpty()->validate($d['license_name'])) {
-          $file_errors[$index][] = 'The license name was not provided.';
-        }
-
-        // Verify either the license URL or text are provided
-        if (!(v::optional(v::url()))->validate($d['license_url'])) {
-          $file_errors[$index][] = 'The license URL was not a valid URL.';
-        } elseif (!(v::notEmpty()->validate($d['license_url']) || v::notEmpty()->validate($d['license_text']))) {
-          $file_errors[$index][] = 'The license URL or text was not provided. One or both must be provided when "Other Approved Licensed" is selected.';
-        }
-      } else {
-        // Check if it's a popular or common license, or, if enabled, another OSI-approved license
-        if (
-          !in_array($d['license'], $upload_config['licenses']['popular'], true) &&
-          !in_array($d['license'], $upload_config['licenses']['common'], true) &&
-          !($upload_config['licenses']['allow_other_osi'] && $spdx->validate($d['license']) && $spdx->isOsiApprovedByIdentifier($d['license']))
-        ) {
-          $file_errors[$index][] = 'An invalid license was selected.';
-        }
-      }
+      $file_errors[$index] = [
+        ...$file_errors[$index],
+        ...$this->validate_asset_information($spdx, $upload_config, $d)
+      ];
 
       // If we have no errors for this file, move it into the temporary directory and add it to the queue
       if (!isset($file_errors[$index]) || sizeof($file_errors[$index]) === 0) {
@@ -437,7 +552,13 @@ class ManagementController
           ]);
         } catch (Exception) {
           // TODO: Log the error
+          // TODO: Delete the file that was moved
           $file_errors[$index][] = 'A database error occurred while adding the file to the queue.';
+        }
+
+        // If we had no errors, delete the empty array
+        if (empty($file_errors[$index])) {
+          unset($file_errors[$index]);
         }
 
         $successful_files++;
@@ -489,16 +610,10 @@ class ManagementController
       ->withHeader('Content-Type', 'application/json');
   }
 
+  #[AuthRequirement('admin')]
   public function queue(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
   {
-    if (!isset($_SESSION['username']) || $_SESSION['is_admin'] !== true) {
-      return $response
-        ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('home'))
-        ->withStatus(302);
-    }
-
-
-    // TODO: Pagination
+    // TODO: Pagination?
 
     // Get all the items in the queue
     $queue = $db->queue_get();
@@ -517,14 +632,10 @@ class ManagementController
       'queue' => $queue
     ]);
   }
+
+  #[AuthRequirement('admin')]
   public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer): ResponseInterface
   {
-    if (!isset($_SESSION['username']) || $_SESSION['is_admin'] !== true) {
-      return $response
-        ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('home'))
-        ->withStatus(302);
-    }
-
     $data = $request->getParsedBody();
 
     $errors = [];
@@ -575,18 +686,45 @@ class ManagementController
           }
           // Else, it might exist as a file or link, so bail
           else {
-            $errors[$id][] = 'File or link exists where the final directory would be.';
+            $errors[$id][] = 'File or link exists at the final directory.';
             continue;
           }
         }
 
-        // Move the temporary file to the final destination
-        rename($path_queue, $path_final);
+        // Copy the temporary file to the final destination
+        if (copy($path_queue, $path_final) === false) {
+          $errors[$id][] = 'Failed to place the file in the final directory.';
+          continue;
+        }
 
-        // TODO: Add a record to the other database table
+        // Add the approved asset to the database
+        if ($db->asset_add([
+          'path' => $path_clean_dir,
+          'bzid' => $queue['bzid'],
+          'username' => $queue['username'],
+          'filename' => $queue['filename'],
+          'file_size' => $queue['file_size'],
+          'mime_type' => $queue['mime_type'],
+          'author' => $queue['author'],
+          'source_url' => $queue['source_url'],
+          'license_id' => $queue['license_id'],
+          'license_name' => $queue['license_name'],
+          'license_url' => $queue['license_url'],
+          'license_text' => $queue['license_text']
+        ]) === null) {
+          $errors[$id][] = 'Failed to add asset entry.';
+          unlink($path_final);
+          continue;
+        }
 
         // Remove it from the database
-        $db->queue_remove($queue['id']);
+        if (!$db->queue_remove($queue['id'])) {
+          $errors[$id][] = 'Failed to remove queue entry.';
+          continue;
+        }
+
+        // Remove the temporary file
+        unlink($path_queue);
 
         $notifications[$queue['email']]['approved'][] = [
           'filename' => $queue['filename'],

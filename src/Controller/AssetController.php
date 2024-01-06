@@ -22,6 +22,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Attribute\AuthRequirement;
 use App\Database\DatabaseInterface;
 use League\Config\Configuration;
 use Psr\Http\Message\ResponseInterface;
@@ -29,9 +30,12 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class AssetController
 {
+  // We'll handle auth requirements inside the function
+  #[AuthRequirement('none')]
   public function view(ServerRequestInterface $request, ResponseInterface $response, Configuration $config, DatabaseInterface $db, string $bzid, int $queueid, int $width = 0, int $height = 0): ResponseInterface
   {
-    if (empty($_SESSION['username'])) {
+    // Require that a user is logged in and is either viewing their own assets or are an admin
+    if (empty($_SESSION['username']) || (!$_SESSION['is_admin'] && $_SESSION['bzid'] !== $bzid)) {
       $response->getBody()->write("401 Unauthorized");
       return $response
           ->withStatus(401);
@@ -96,7 +100,7 @@ class AssetController
             'image/webp' => imagecreatefromwebp($fullPath),
           };
         } catch (\UnhandledMatchError $e) {
-          $response->getBody()->write('500 Error Reading Image');
+          $response->getBody()->write('415 Unsupported Image Type');
           return $response
             ->withStatus(500);
         }
@@ -111,14 +115,14 @@ class AssetController
           $response = $response->withHeader('Content-Type', 'image/avif');
           $response->getBody()->write(ob_get_contents());
         } else {
-          $response->getBody()->write("500 Error encoding thumbnail");
+          $response->getBody()->write("500 Error Generating Thumbnail");
           $response = $response->withStatus(500);
         }
         ob_end_clean();
       }
     } else {
-      $response->getBody()->write("403 Unsupported file type");
-      $response = $response->withStatus(403);
+      $response->getBody()->write("415 Unsupported File Type");
+      $response = $response->withStatus(415);
     }
 
     return $response;

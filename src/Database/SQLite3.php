@@ -136,7 +136,8 @@ class SQLite3 implements DatabaseInterface
   {
     $stmt = $this->db->prepare(/** @lang SQLite */ 'INSERT INTO queue (bzid, username, email, filename, file_size, mime_type, author, source_url, license_id, license_name, license_url, license_text) VALUES (:bzid, :username, :email, :filename, :file_size, :mime_type, :author, :source_url, :license_id, :license_name, :license_url, :license_text)');
     $stmt->execute($data);
-    return (int)$this->db->lastInsertId();
+    $id = $this->db->lastInsertId();
+    return ($id !== false) ? (int)$id : null;
   }
 
   public function queue_update(int $id, array $data): bool
@@ -176,6 +177,7 @@ class SQLite3 implements DatabaseInterface
   {
     $stmt = $this->db->prepare(/** @lang SQLite */ 'INSERT INTO asset (path, bzid, username, filename, file_size, mime_type, author, source_url, license_id, license_name, license_url, license_text) VALUES (:path, :bzid, :username, :filename, :file_size, :mime_type, :author, :source_url, :license_id, :license_name, :license_url, :license_text)');
     $stmt->execute($data);
-    return (int)$this->db->lastInsertId();
+    $id = $this->db->lastInsertId();
+    return ($id !== false) ? (int)$id : null;
   }
 }

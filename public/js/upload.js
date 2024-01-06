@@ -16,40 +16,6 @@ function bytesToSize(bytes) {
         return (bytes / terabyte).toFixed(1) + ' TiB';
 }
 
-function updateLicense(ev) {
-    // Sanity check to make sure we're operating on the select element
-    if (ev.target.tagName !== 'SELECT')
-        return;
-
-    // Loop through all the custom license elements in for this file
-    ev.target.closest('.upload').querySelectorAll('.custom-license').forEach((el) => {
-        el.classList.toggle('d-none', ev.target.value !== 'Other');
-    });
-
-    // Also validate the license
-    validateLicense(ev);
-}
-
-function validateLicense(ev) {
-    const upload_container = ev.target.closest('.upload');
-    const license_selector = upload_container.querySelector('.license-select');
-
-    // If the license is set to "Other OSI-Approved License", verify that at least name, and then URL or text is provided
-    if (license_selector.value === 'Other') {
-        if (upload_container.querySelector('.license-name').value.length === 0) {
-            license_selector.setCustomValidity('When using another approved license, the license name must be provided.');
-            return;
-        }
-        if (upload_container.querySelector('.license-url').value.length === 0 && upload_container.querySelector('.license-text').value.length === 0) {
-            license_selector.setCustomValidity('When using another approved license, the license URL or text must be provided.');
-            return;
-        }
-    }
-
-    // If we got this far, it's valid
-    license_selector.setCustomValidity('');
-}
-
 function removeFile(upload_container) {
     // Subtract the file size from our total and update the totals
     total_bytes -= upload_container.querySelector('input[type=file]').files[0].size;
@@ -58,23 +24,6 @@ function removeFile(upload_container) {
 
     // Destroy the container div
     upload_container.parentNode.removeChild(upload_container);
-}
-
-const dialog = new bootstrap.Modal(document.getElementById('dialog'), {})
-const dialog_title = document.getElementById('dialog_message');
-const dialog_message = document.getElementById('dialog_message');
-function showDialog(title, message) {
-    dialog_title.innerText = title;
-    dialog_message.innerHTML = '';
-    if (!Array.isArray(message)) {
-        message = [message]
-    }
-    for (let i = 0; i < message.length; ++i) {
-        const p = document.createElement('p');
-        p.innerText = message[i];
-        dialog_message.append(p);
-    }
-    dialog.show();
 }
 
 const container = document.getElementById('file_list');
@@ -112,17 +61,6 @@ function updateTotals() {
         total_size_progress.classList.remove('bg-danger');
 }
 
-// Custom form validation tooltips
-function setInvalidMessage(selector, message) {
-    document.querySelectorAll(selector).forEach((el) => {
-        el.addEventListener('invalid', function () {
-            this.setCustomValidity(message)
-        });
-        el.addEventListener('input', function () {
-            this.setCustomValidity('')
-        });
-    });
-}
 setInvalidMessage('#new_files', 'At least one file must be provided.');
 setInvalidMessage('#uploader_email', 'Your email must be provided.');
 setInvalidMessage('#agree_terms', 'All images must comply with the Terms of Service before they may be uploaded.');
@@ -237,7 +175,7 @@ upload_form.addEventListener('submit', async (ev) => {
 
     const upload_button = document.getElementById('btn_upload_assets');
     upload_button.disabled = true;
-    upload_button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span role="status">Uploading...</span>';
+    upload_button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"> </span><span role="status">Uploading...</span>';
 
     // Build and send a response
     const data = new FormData(ev.target);
@@ -249,7 +187,6 @@ upload_form.addEventListener('submit', async (ev) => {
     // If we received a successful response from the server, process it
     if (response.status === 200) {
         const data = await response.json();
-        console.log(data);
 
         if (data.success) {
             // Reset the form
