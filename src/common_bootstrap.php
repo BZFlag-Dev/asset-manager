@@ -135,6 +135,8 @@ $container->set(Twig::class, function (Configuration $config) {
   $twig->offsetSet('game_name', $config->get('site.game_name'));
   $twig->offsetSet('site_title', $config->get('site.title'));
 
+  $twig->offsetSet('color_theme', (!isset($_COOKIE['color_theme']) || $_COOKIE['color_theme'] !== 'light')?'dark':'light');
+
   return $twig;
 });
 

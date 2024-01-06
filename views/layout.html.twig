@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="{{ color_theme }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,12 +40,49 @@
                     </li>
                     {% endif %}
                 </ul>
+
+                <div class="d-flex">
+                    <button
+                        class="theme-toggle{% if color_theme == 'dark' %} theme-toggle--toggled{% endif %}"
+                        type="button"
+                        title="Toggle theme"
+                        aria-label="Toggle theme"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
+                            width="32px"
+                            height="32px"
+                            fill="currentColor"
+                            stroke-linecap="round"
+                            class="theme-toggle__classic"
+                            viewBox="0 0 32 32"
+                        >
+                            <clipPath id="theme-toggle__classic__cutout">
+                                <path d="M0-5h30a1 1 0 0 0 9 13v24H0Z" />
+                            </clipPath>
+                            <g clip-path="url(#theme-toggle__classic__cutout)">
+                                <circle cx="16" cy="16" r="9.34" />
+                                <g stroke="currentColor" stroke-width="1.5">
+                                    <path d="M16 5.5v-4" />
+                                    <path d="M16 30.5v-4" />
+                                    <path d="M1.5 16h4" />
+                                    <path d="M26.5 16h4" />
+                                    <path d="m23.4 8.6 2.8-2.8" />
+                                    <path d="m5.7 26.3 2.9-2.9" />
+                                    <path d="m5.8 5.8 2.8 2.8" />
+                                    <path d="m23.4 23.4 2.9 2.9" />
+                                </g>
+                            </g>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
 </div>
 
-<div class="container p-3 pb-0 mb-3 bg-dark bg-opacity-75 border border-top-0">
+<div class="container p-3 pb-0 mb-3 bg-body bg-opacity-75 border border-top-0">
 {% block content %}{% endblock %}
 
     <div id="dialog" class="modal" tabindex="-1">
@@ -71,6 +108,7 @@
 </div>
 
 <script src="{{ base_path() }}/js/bootstrap.bundle.min.js"></script>
+<script src="{{ base_path() }}/js/common.js"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
