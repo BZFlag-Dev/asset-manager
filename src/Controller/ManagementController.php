@@ -153,6 +153,8 @@ class ManagementController
 
     $return = [];
 
+    $successful_files = 0;
+
     // Loop through
     foreach ($data['assets'] as $id => $asset) {
       // Fetch the current information
@@ -197,6 +199,8 @@ class ManagementController
             'license_text' => $asset['license_text'],
             'change_requested' => 0
           ]);
+
+          $successful_files++;
         }
       } else {
         $return['asset_errors'][$id][] = 'No changes were made.';
@@ -205,7 +209,32 @@ class ManagementController
 
     $return['success'] = empty($return['asset_errors']);
 
-    // TODO: Sent notification emails to the admins
+    // If one or more files were successful, send a notification
+    if ($successful_files > 0) {
+      // Each email will use the same subject/message
+      $mailer->Subject = sprintf("%s %s - Uploaded Assets", $config->get('site.game_name'), $config->get('site.title'));
+      $mailer->msgHTML($twig->fetch('email/queue_notification.html.twig'));
+      $mailer->AltBody = $twig->fetch('email/queue_notification.text.twig');
+
+      foreach($config->get('email.notify_addresses') as $email_address) {
+        try {
+          $mailer->addAddress($email_address);
+        } catch (Exception) {
+          // TODO: Log invalid address
+          continue;
+        }
+
+        // Try to send the email
+        try {
+          $mailer->send();
+        } catch (Exception) {
+          $mailer->getSMTPInstance()->reset();
+        }
+
+        // Clear the address list
+        $mailer->clearAddresses();
+      }
+    }
 
     $response->getBody()->write(json_encode($return));
     return $response
