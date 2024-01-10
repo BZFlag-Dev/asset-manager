@@ -9,7 +9,7 @@ Feature Progress
 * [X] Queue database
 * [X] Image thumbnail generator
 * [X] Ability to upload new assets
-  * [ ] Editing asset information after a change is requested
+  * [X] Editing asset information after a change is requested
 * [X] Moderation interface for the asset queue
 * [X] Email notifications
   * [ ] Moderation queue reminders
