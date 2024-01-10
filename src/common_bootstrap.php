@@ -23,6 +23,8 @@ declare(strict_types=1);
 use App\Database\DatabaseInterface;
 use DI\Bridge\Slim\Bridge;
 use League\Config\Configuration;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 use Nette\Schema\Expect;
 use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
@@ -107,7 +109,14 @@ $container->set(Configuration::class, function () {
       // This should only be set to false for local test/dev environments
       'check_ip' => Expect::bool(true)
     ]),
-    'debug' => Expect::bool(false)
+    // Display debug messages in the browser? Disable for production site.
+    'debug' => Expect::bool(false),
+    'logging' => Expect::structure([
+      // Absolute path to the configuration file
+      'path' => Expect::string(dirname(__DIR__).'/var/log/app.log'),
+      // Log level (see https://seldaek.github.io/monolog/doc/01-usage.html)
+      'level' => Expect::int(250)->min(100)->max(600)
+    ])
   ]);
 
   // Merge our configuration file information
@@ -138,6 +147,13 @@ $container->set(Twig::class, function (Configuration $config) {
   return $twig;
 });
 
+$container->set(Logger::class, function (Configuration $config): Logger {
+  $c = $config->get('logging');
+  $logger = new Logger('app');
+  $logger->pushHandler(new StreamHandler($c['path'], $c['level']));
+  return $logger;
+});
+
 // Create our application
 $app = Bridge::create($container);
 
@@ -153,5 +169,9 @@ if (defined('IN_MANAGER')) {
 $app->add(TwigMiddleware::createFromContainer($app, Twig::class));
 
 // Set up error handling
-// TODO: Logging errors to a file
-$errorMiddleware = $app->addErrorMiddleware($config->get('debug'), true, true);
+$errorMiddleware = $app->addErrorMiddleware(
+  $config->get('debug'),
+  true,
+  true,
+  $app->getContainer()->get(Logger::class)
+);

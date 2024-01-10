@@ -26,6 +26,7 @@
         "league/config": "^1.2",
         "respect/validation": "^2.2",
         "composer/spdx-licenses": "^1.5",
-        "phpmailer/phpmailer": "^6.8"
+        "phpmailer/phpmailer": "^6.8",
+        "monolog/monolog": "^3.5"
     }
 }

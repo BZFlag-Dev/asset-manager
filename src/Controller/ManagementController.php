@@ -30,6 +30,7 @@ use Composer\Spdx\SpdxLicenses;
 use Exception;
 use InvalidArgumentException;
 use League\Config\Configuration;
+use Monolog\Logger;
 use PHPMailer\PHPMailer\PHPMailer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -144,7 +145,7 @@ class ManagementController
 
   #[AuthRequirement('user')]
   #[JSONResponse]
-  public function changes(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer): ResponseInterface
+  public function changes(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger): ResponseInterface
   {
     // Grab a copy of the form data
     $data = $request->getParsedBody();
@@ -220,7 +221,9 @@ class ManagementController
         try {
           $mailer->addAddress($email_address);
         } catch (Exception) {
-          // TODO: Log invalid address
+          $logger->error('Invalid notification email address', [
+            'address' => $email_address
+          ]);
           continue;
         }
 
@@ -242,7 +245,7 @@ class ManagementController
   }
 
   #[AuthRequirement('none')]
-  public function login(App $app, ResponseInterface $response, Twig $twig, Configuration $config, $token = '', $username = ''): ResponseInterface
+  public function login(App $app, ResponseInterface $response, Twig $twig, Configuration $config, Logger $logger, $token = '', $username = ''): ResponseInterface
   {
     if (empty($token) || empty($username)) {
       return $response
@@ -305,7 +308,7 @@ class ManagementController
     if ($result === false || !$foundBZID || !$foundTOKGOOD) {
       $_SESSION = [];
       session_destroy();
-      // TODO: Logging this error
+      $logger->error("Login validation error for $username from {$_SERVER['REMOTE_IP']}");
       return $twig->render($response, 'error.html.twig', [
         'message' => 'There was an error verifying your login.'
       ]);
@@ -389,7 +392,7 @@ class ManagementController
 
   #[AuthRequirement('user')]
   #[JSONResponse]
-  public function upload_process(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer): ResponseInterface
+  public function upload_process(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger): ResponseInterface
   {
     // Fetch the upload configuration options and clamp values to the PHP maximums
     $upload_config = $config->get('asset.upload');
@@ -559,7 +562,9 @@ class ManagementController
         try {
           $upload['file']->moveTo($path_queue);
         } catch (InvalidArgumentException | RuntimeException) {
-          // TODO: Log the error
+          $logger->critical("Failed to move uploaded file from temporary location to queue directory", [
+            'queue_path' => $path_queue
+          ]);
           $file_errors[$index][] = 'A server error occurred while moving the temporary file.';
           continue;
         }
@@ -580,7 +585,12 @@ class ManagementController
             'license_text' => $d['license_text']
           ]);
         } catch (Exception) {
-          // TODO: Log the error
+          $logger->critical("A database error occurred while adding file to the queue", [
+            'bzid' => $_SESSION['bzid'],
+            'username' => $_SESSION['username'],
+            'filename' => $filename,
+            'file_size' => $file_size,
+          ]);
           // TODO: Delete the file that was moved
           $file_errors[$index][] = 'A database error occurred while adding the file to the queue.';
         }
@@ -605,7 +615,9 @@ class ManagementController
         try {
           $mailer->addAddress($email_address);
         } catch (Exception) {
-          // TODO: Log invalid address
+          $logger->error('Invalid notification email address', [
+            'address' => $email_address
+          ]);
           continue;
         }
 
@@ -663,7 +675,7 @@ class ManagementController
   }
 
   #[AuthRequirement('admin')]
-  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer): ResponseInterface
+  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger): ResponseInterface
   {
     $data = $request->getParsedBody();
 
@@ -798,7 +810,9 @@ class ManagementController
       try {
         $mailer->addAddress($email_address);
       } catch (Exception) {
-        // TODO: Log error about invalid address
+        $logger->error('Invalid user email address', [
+          'address' => $email_address
+        ]);
         continue;
       }
       $mailer->msgHTML($twig->fetch('email/review_notification.html.twig', $reviews));
