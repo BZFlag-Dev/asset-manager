@@ -26,6 +26,7 @@ use League\Config\Configuration;
 use Nyholm\Psr7\Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
+use ReflectionClass;
 use Slim\App;
 use Slim\Routing\RouteContext;
 
@@ -54,7 +55,7 @@ class RequireAuth
 
     // Get the callable for this route and, through reflection, get the attributes for the method
     $callable = $route->getCallable();
-    $reflection_class = new \ReflectionClass($callable[0]);
+    $reflection_class = new ReflectionClass($callable[0]);
     $reflection_method = $reflection_class->getMethod($callable[1]);
     $attributes = $reflection_method->getAttributes();
 

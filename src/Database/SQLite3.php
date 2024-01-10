@@ -22,6 +22,7 @@ declare(strict_types=1);
 
 namespace App\Database;
 
+use Exception;
 use League\Config\Configuration;
 use PDO;
 use PDOException;
@@ -43,13 +44,12 @@ class SQLite3 implements DatabaseInterface
     ]);
 
     // Database upgrade
-    $version = 0;
     try {
       // Check if the database needs to be upgraded
       $stmt = $this->db->query(/** @lang SQLite */ "PRAGMA user_version");
       $version = (int)$stmt->fetchColumn();
     } catch (PDOException $e) {
-      throw new \Exception("Unable to check database version: ".$e->getMessage());
+      throw new Exception("Unable to check database version: ".$e->getMessage());
     }
 
     if ($version < self::DATABASE_VERSION) {
@@ -81,7 +81,7 @@ class SQLite3 implements DatabaseInterface
       } catch (PDOException $e) {
         // Rollback the attempted upgrade
         $this->db->rollBack();
-        throw new \Exception("Unable to create/upgrade the database: ".$e->getMessage());
+        throw new Exception("Unable to create/upgrade the database: ".$e->getMessage());
       }
     }
 
@@ -89,7 +89,7 @@ class SQLite3 implements DatabaseInterface
       // Enable foreign key integrity checks
       $this->db->query(/** @lang SQLite */ 'PRAGMA foreign_keys=on');
     } catch (PDOException $e) {
-      throw new \Exception("Unable to enable foreign key integrity checks: ".$e->getMessage());
+      throw new Exception("Unable to enable foreign key integrity checks: ".$e->getMessage());
     }
   }
 

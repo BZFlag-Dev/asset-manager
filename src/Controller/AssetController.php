@@ -27,6 +27,7 @@ use App\Database\DatabaseInterface;
 use League\Config\Configuration;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use UnhandledMatchError;
 
 class AssetController
 {
@@ -99,7 +100,7 @@ class AssetController
             'image/avif' => imagecreatefromavif($fullPath),
             'image/webp' => imagecreatefromwebp($fullPath),
           };
-        } catch (\UnhandledMatchError $e) {
+        } catch (UnhandledMatchError) {
           $response->getBody()->write('415 Unsupported Image Type');
           return $response
             ->withStatus(500);
