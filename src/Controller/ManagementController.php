@@ -31,6 +31,7 @@ use Exception;
 use InvalidArgumentException;
 use League\Config\Configuration;
 use Monolog\Logger;
+use PDOException;
 use PHPMailer\PHPMailer\PHPMailer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -675,132 +676,149 @@ class ManagementController
   }
 
   #[AuthRequirement('admin')]
+  #[JSONResponse]
   public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger): ResponseInterface
   {
     $data = $request->getParsedBody();
 
-    $errors = [];
+    $successful_files = [];
+    $file_errors = [];
 
     $notifications = [];
 
     $base_url = $config->get('site.base_url');
 
-    foreach($data['review'] as $id => $review) {
-      if (empty($review['action'])) {
-        continue;
-      }
-
-      // Fetch this queue entry
-      $queue = $db->queue_get_by_id($id);
-
-      if (!$queue) {
-        continue;
-      }
-
-      if ($review['action'] === 'approve') {
-        // Paths
-        $path_queue = $config->get('path.upload')."/{$queue['bzid']}_{$queue['filename']}";
-        $path_clean_dir = Utils::clean_username($queue['username']);
-        if (strlen($path_clean_dir) === 0) {
-          $errors[$id][] = 'The destination directory name is blank.';
-          continue;
-        }
-        $path_final_dir = $config->get('path.files')."/$path_clean_dir";
-        $path_final = "$path_final_dir/{$queue['filename']}";
-
-        // Verify the temporary file exists
-        if (!file_exists($path_queue)) {
-          $errors[$id][] = 'The temporary file does not exist.';
+    if (isset($data['review'])) {
+      foreach ($data['review'] as $id => $review) {
+        if (empty($review['action'])) {
           continue;
         }
 
-        // Verify the final destination doesn't already exist
-        if (file_exists($path_final)) {
-          $errors[$id][] = 'A file already exists at the final path.';
+        // Fetch this queue entry
+        $queue = $db->queue_get_by_id($id);
+
+        if (!$queue) {
           continue;
         }
 
-        // Create the final directory if it doesn't exist
-        if (!is_dir($path_final_dir)) {
-          if (!file_exists($path_final_dir)) {
-            mkdir($path_final_dir);
-          }
-          // Else, it might exist as a file or link, so bail
-          else {
-            $errors[$id][] = 'File or link exists at the final directory.';
+        if ($review['action'] === 'approve') {
+          // Paths
+          $path_queue = $config->get('path.upload') . "/{$queue['bzid']}_{$queue['filename']}";
+          $path_clean_dir = Utils::clean_username($queue['username']);
+          if (strlen($path_clean_dir) === 0) {
+            $file_errors[$id][] = 'The destination directory name is blank.';
             continue;
           }
-        }
+          $path_final_dir = $config->get('path.files') . "/$path_clean_dir";
+          $path_final = "$path_final_dir/{$queue['filename']}";
 
-        // Copy the temporary file to the final destination
-        if (copy($path_queue, $path_final) === false) {
-          $errors[$id][] = 'Failed to place the file in the final directory.';
-          continue;
-        }
+          // Verify the temporary file exists
+          if (!file_exists($path_queue)) {
+            $file_errors[$id][] = 'The temporary file does not exist.';
+            continue;
+          }
 
-        // Add the approved asset to the database
-        if ($db->asset_add([
-          'path' => $path_clean_dir,
-          'bzid' => $queue['bzid'],
-          'username' => $queue['username'],
-          'filename' => $queue['filename'],
-          'file_size' => $queue['file_size'],
-          'mime_type' => $queue['mime_type'],
-          'author' => $queue['author'],
-          'source_url' => $queue['source_url'],
-          'license_id' => $queue['license_id'],
-          'license_name' => $queue['license_name'],
-          'license_url' => $queue['license_url'],
-          'license_text' => $queue['license_text']
-        ]) === null) {
-          $errors[$id][] = 'Failed to add asset entry.';
-          unlink($path_final);
-          continue;
-        }
+          // Verify the final destination doesn't already exist
+          if (file_exists($path_final)) {
+            $file_errors[$id][] = 'A file already exists at the final path.';
+            continue;
+          }
 
-        // Remove it from the database
-        if (!$db->queue_remove($queue['id'])) {
-          $errors[$id][] = 'Failed to remove queue entry.';
-          continue;
-        }
+          // Create the final directory if it doesn't exist
+          if (!is_dir($path_final_dir)) {
+            if (!file_exists($path_final_dir)) {
+              mkdir($path_final_dir);
+            } // Else, it might exist as a file or link, so bail
+            else {
+              $file_errors[$id][] = 'File or link exists at the final directory.';
+              continue;
+            }
+          }
 
-        // Remove the temporary file
-        unlink($path_queue);
+          // Copy the temporary file to the final destination
+          if (copy($path_queue, $path_final) === false) {
+            $file_errors[$id][] = 'Failed to place the file in the final directory.';
+            continue;
+          }
 
-        $notifications[$queue['email']]['approved'][] = [
-          'filename' => $queue['filename'],
-          'final_url' => "$base_url/$path_clean_dir/{$queue['filename']}"
-        ];
+          // Calculate and compare the SHA256 hash
+          $hash_256_temp = hash_file('sha256', $path_queue);
+          $hash_256_final = hash_file('sha256', $path_final);
+          if ($hash_256_temp === false || $hash_256_final === false || $hash_256_final !== $hash_256_temp) {
+            $file_errors[$id][] = 'Failed to calculate file hash or file hash mismatch between temporary and final file.';
+            unlink($path_final);
+            continue;
+          }
 
-      } elseif ($review['action'] === 'request' || $review['action'] === 'reject') {
-        // Verify that we have the details for this review
-        if (!v::notEmpty()->validate($review['details'])) {
-          $errors[$id][] = 'Review details were not provided.';
-          continue;
-        }
+          // Add the approved asset to the database
+          if ($db->asset_add([
+              'path' => $path_clean_dir,
+              'bzid' => $queue['bzid'],
+              'username' => $queue['username'],
+              'filename' => $queue['filename'],
+              'file_size' => $queue['file_size'],
+              'mime_type' => $queue['mime_type'],
+              'author' => $queue['author'],
+              'source_url' => $queue['source_url'],
+              'license_id' => $queue['license_id'],
+              'license_name' => $queue['license_name'],
+              'license_url' => $queue['license_url'],
+              'license_text' => $queue['license_text'],
+              'hash_sha256' => $hash_256_final,
+              'approved_by' => $_SESSION['username']
+            ]) === null) {
+            $file_errors[$id][] = 'Failed to add asset entry.';
+            unlink($path_final);
+            continue;
+          }
 
-        if ($review['action'] === 'request') {
-          $db->queue_update($queue['id'], [
-            'details' => $review['details'],
-            'change_requested' => 1
-          ]);
+          // Remove it from the database
+          if (!$db->queue_remove($queue['id'])) {
+            $file_errors[$id][] = 'Failed to remove queue entry.';
+            continue;
+          }
 
-          $notifications[$queue['email']]['change_requested'][] = [
+          // Remove the temporary file
+          unlink($path_queue);
+
+          $notifications[$queue['email']]['approved'][] = [
             'filename' => $queue['filename'],
-            'details' => $review['details']
+            'final_url' => "$base_url/$path_clean_dir/{$queue['filename']}"
           ];
-        } else {
-          // Delete the temporary file
-          unlink($config->get('path.upload')."/{$queue['bzid']}_{$queue['filename']}");
 
-          // Remove the entry from the database
-          $db->queue_remove($queue['id']);
+        } elseif ($review['action'] === 'request' || $review['action'] === 'reject') {
+          // Verify that we have the details for this review
+          if (!v::notEmpty()->validate($review['details'])) {
+            $file_errors[$id][] = 'Review details were not provided.';
+            continue;
+          }
 
-          $notifications[$queue['email']]['rejected'][] = [
-            'filename' => $queue['filename'],
-            'details' => $review['details']
-          ];
+          if ($review['action'] === 'request') {
+            $db->queue_update($queue['id'], [
+              'details' => $review['details'],
+              'change_requested' => 1
+            ]);
+
+            $notifications[$queue['email']]['change_requested'][] = [
+              'filename' => $queue['filename'],
+              'details' => $review['details']
+            ];
+          } else {
+            // Delete the temporary file
+            unlink($config->get('path.upload') . "/{$queue['bzid']}_{$queue['filename']}");
+
+            // Remove the entry from the database
+            $db->queue_remove($queue['id']);
+
+            $notifications[$queue['email']]['rejected'][] = [
+              'filename' => $queue['filename'],
+              'details' => $review['details']
+            ];
+          }
         }
+
+        // Add it to the list of successful files
+        $successful_files[] = $queue['id'];
       }
     }
 
@@ -822,6 +840,7 @@ class ManagementController
       try {
         $mailer->send();
       } catch (Exception) {
+        // TODO: Log the failure
         $mailer->getSMTPInstance()->reset();
       }
 
@@ -829,8 +848,11 @@ class ManagementController
       $mailer->clearAddresses();
     }
 
+    $response->getBody()->write(json_encode([
+      'successful_files' => $successful_files,
+      'file_errors' => $file_errors
+    ]));
     return $response
-      ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('queue'))
-      ->withStatus(302);
+      ->withHeader('Content-Type', 'application/json');
   }
 }

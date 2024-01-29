@@ -21,12 +21,13 @@ declare(strict_types=1);
  */
 
 namespace App\Database;
+use Monolog\Logger;
 
 use League\Config\Configuration;
 
 interface DatabaseInterface
 {
-  public function __construct(Configuration $config);
+  public function __construct(Configuration $config, Logger $logger);
 
   public function queue_get(): array;
 

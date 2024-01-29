@@ -173,9 +173,9 @@ upload_form.addEventListener('submit', async (ev) => {
         return;
     }
 
-    const upload_button = document.getElementById('btn_upload_assets');
+    const upload_button = upload_form.querySelector('button[type=submit]');
     upload_button.disabled = true;
-    upload_button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"> </span><span role="status">Uploading...</span>';
+    upload_button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <span role="status">Uploading...</span>';
 
     // Build and send a response
     const data = new FormData(ev.target);

@@ -5,9 +5,11 @@
 {% set page_title = 'Queue' %}
 
 {% block content %}
-    <form action="{{ url_for('queue') }}" id="uploads" method="post">
         {% for asset in queue|filter(v => v.change_requested == 0) %}
-        <div class="mb-3 pb-3 asset">
+            {% if loop.first %}
+    <form action="{{ url_for('queue') }}" id="queue">
+            {% endif %}
+        <div class="mb-3 pb-3 asset" id="file_{{ asset.id }}">
             <div class="row mb-3">
                 <div class="col me-3 position-relative file-info">
                     <h3>File Information</h3>
@@ -15,7 +17,7 @@
                     <div class="file-metadata">
                         <p>
                             <strong>Filename:</strong><br>
-                            <span class="font-monospace bg-dark-subtle p-1">{{ asset.filename | escape }}</span>
+                            <span class="file-name font-monospace bg-dark-subtle p-1">{{ asset.filename | escape }}</span>
                         </p>
                         <p>
                             <strong>File size:</strong> {{ bytesToSize(asset.file_size) }}
@@ -41,6 +43,12 @@
                         <strong>Uploader:</strong><br>
                         {{ asset.username }} ({{ asset.bzid }})
                     </p>
+                </div>
+            </div>
+            <div class="row d-none asset-error" id="file_errors_{{ asset.id }}">
+                <div class="col text-danger-emphasis">
+                    <strong>Errors:</strong><br>
+                    <ul></ul>
                 </div>
             </div>
             <div class="row">
@@ -101,17 +109,20 @@
                     <textarea class="form-control" id="review_{{ asset.id }}_details" name="review[{{ asset.id }}][details]" rows="8"></textarea>
                 </div>
             </div>
+
+            <hr>
         </div>
-
-        <hr>
-        {% endfor %}
-
+            {% if loop.last %}
         <div class="row">
             <div class="col">
-                <button type="submit" class="btn btn-primary mt-3" id="btn_upload_assets">Submit Review</button>
+                <button type="submit" class="btn btn-primary mt-3">Submit Reviews</button>
             </div>
         </div>
     </form>
+            {% endif %}
+        {% else %}
+            There are no files in the approval queue.
+        {% endfor %}
 {% endblock %}
 
 {% block scripts %}

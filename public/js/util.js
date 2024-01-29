@@ -120,3 +120,28 @@ function showDialog(title, message) {
     }
     dialog.show();
 }
+
+function fancyJoin(values) {
+    if (!Array.isArray(values)) {
+        console.error('fancyJoin: Value provided is not an array');
+        return '';
+    }
+
+    if (values.length === 0)
+        return '';
+    else if (values.length === 1)
+        return values[0];
+    else if (values.length === 2)
+        return values[0] + " and " + values[1];
+    else {
+        let return_value = '';
+        const last = values.length - 1;
+        for (let index = 0; index < values.length; index++) {
+            if (index === last)
+                return_value += ` and ${values[index]}`;
+            else
+                return_value += `, ${values[index]}`;
+        }
+    }
+
+}

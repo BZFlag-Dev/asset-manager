@@ -24,6 +24,7 @@ namespace App\Database;
 
 use Exception;
 use League\Config\Configuration;
+use Monolog\Logger;
 use PDO;
 use PDOException;
 
@@ -34,9 +35,9 @@ class SQLite3 implements DatabaseInterface
    */
   private PDO $db;
 
-  private const DATABASE_VERSION = 2;
+  private const DATABASE_VERSION = 3;
 
-  public function __construct(Configuration $config)
+  public function __construct(Configuration $config, private Logger $logger)
   {
     // Open the database
     $this->db = new PDO("sqlite:{$config->get('database.path')}", '', '', [
@@ -71,6 +72,14 @@ class SQLite3 implements DatabaseInterface
         if ($version < 2) {
           $this->db->query(/** @lang SQLite */ 'CREATE TABLE asset (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, bzid TEXT NOT NULL, username TEXT NOT NULL, filename TEXT NOT NULL, file_size INTEGER NOT NULL, mime_type TEXT NOT NULL, author TEXT NOT NULL, source_url TEXT, license_id TEXT NOT NULL, license_name TEXT NOT NULL, license_url TEXT, license_text TEXT, UNIQUE(path, filename))');
           $this->db->query(/** @lang SQLite */ 'CREATE INDEX asset_path_idx ON asset (path)');
+        }
+
+        // Some columns were added. Because one of them defaults to CURRENT_TIMESTAMP, we can't just use ALTER TABLE.
+        if ($version < 3) {
+          $this->db->query(/** @lang SQLite */ 'CREATE TABLE asset2 (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, bzid TEXT NOT NULL, username TEXT NOT NULL, filename TEXT NOT NULL, file_size INTEGER NOT NULL, mime_type TEXT NOT NULL, author TEXT NOT NULL, source_url TEXT, license_id TEXT NOT NULL, license_name TEXT NOT NULL, license_url TEXT, license_text TEXT, hash_sha256 TEXT NULL, approved_by TEXT NULL, when_approved TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(path, filename))');
+          $this->db->query(/** @lang SQLite */ 'INSERT INTO asset2 SELECT id, path, bzid, username, filename, file_size, mime_type, author, source_url, license_id, license_name, license_url, license_text, NULL, NULL, CURRENT_TIMESTAMP FROM asset');
+          $this->db->query(/** @lang SQLite */ 'ALTER TABLE asset RENAME TO oldasset'); // Keep the old table in case something goes horribly wrong
+          $this->db->query(/** @lang SQLite */ 'ALTER TABLE asset2 RENAME TO asset');
         }
 
         // Update the user_version now that we've updated the schema
@@ -175,9 +184,15 @@ class SQLite3 implements DatabaseInterface
 
   public function asset_add(array $data): ?int
   {
-    $stmt = $this->db->prepare(/** @lang SQLite */ 'INSERT INTO asset (path, bzid, username, filename, file_size, mime_type, author, source_url, license_id, license_name, license_url, license_text) VALUES (:path, :bzid, :username, :filename, :file_size, :mime_type, :author, :source_url, :license_id, :license_name, :license_url, :license_text)');
-    $stmt->execute($data);
-    $id = $this->db->lastInsertId();
+    try {
+      $stmt = $this->db->prepare(/** @lang SQLite */ 'INSERT INTO asset (path, bzid, username, filename, file_size, mime_type, author, source_url, license_id, license_name, license_url, license_text, hash_sha256, approved_by) VALUES (:path, :bzid, :username, :filename, :file_size, :mime_type, :author, :source_url, :license_id, :license_name, :license_url, :license_text, :hash_sha256, :approved_by)');
+      $stmt->execute($data);
+      $id = $this->db->lastInsertId();
+    }
+    catch (PDOException $e) {
+      $this->logger->critical($e);
+      return null;
+    }
     return ($id !== false) ? (int)$id : null;
   }
 }

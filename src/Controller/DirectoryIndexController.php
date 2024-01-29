@@ -51,8 +51,8 @@ class DirectoryIndexController
 
       $filename = $info->getFilename();
 
-      // Skip index.php
-      if ($filename === 'index.php') {
+      // Skip index.php and data.sqlite3
+      if ($filename === 'index.php' || $filename == 'data.sqlite3') {
         continue;
       }
 
