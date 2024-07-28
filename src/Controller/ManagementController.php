@@ -254,6 +254,18 @@ class ManagementController
           ->withStatus(302);
     }
 
+    // Parse the site base URL so we can pass the hostname and port to BZFlag's CHECKTOKEN endpoint
+    $url_parts = parse_url($config->get('site.base_url'));
+    if (empty($url_parts['scheme']) || empty($url_parts['host'])) {
+      $logger->error("There is a configuration error with the base URL. Unable to parse the URL scheme and host.");
+      return $twig->render($response, 'error.html.twig', [
+        'message' => 'There is a configuration error with the base URL.'
+      ]);
+    }
+    if (!isset($url_parts['port'])) {
+      $url_parts['port'] = ($url_parts['scheme'] === 'https') ? 443 : 80;
+    }
+
     // Check the token
     $checktokens = urldecode($username);
     if ($config->get('auth.check_ip')) {
@@ -272,7 +284,8 @@ class ManagementController
         'checktokens' => $checktokens,
         'groups' => implode("\r\n", [
           $config->get('auth.admin_group')
-        ])
+        ]),
+        'nameport' => "{$url_parts['host']}:{$url_parts['port']}"
       ])
     ]);
 
@@ -309,7 +322,11 @@ class ManagementController
     if ($result === false || !$foundBZID || !$foundTOKGOOD) {
       $_SESSION = [];
       session_destroy();
-      $logger->error("Login validation error for $username from {$_SERVER['REMOTE_IP']}");
+      $logger->error("Login validation error for $username from {$_SERVER['REMOTE_ADDR']}", [
+        'result' => $result,
+        'foundBZID' => $foundBZID,
+        'foundTOKGOOD' => $foundTOKGOOD
+      ]);
       return $twig->render($response, 'error.html.twig', [
         'message' => 'There was an error verifying your login.'
       ]);

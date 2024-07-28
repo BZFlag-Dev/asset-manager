@@ -104,6 +104,8 @@ $container->set(Configuration::class, function () {
     'auth' => Expect::structure([
       // The URL to the BZFlag list server
       'list_url' => Expect::string('https://my.bzflag.org/db/'),
+      // The URL to the weblogin page, which the return URL will be appended to
+      'weblogin_url' => Expect::string('https://my.bzflag.org/weblogin.php?url='),
       // An uppercase group name in the format of ORG.GROUP
       'admin_group' => Expect::string()->required(),
       // This should only be set to false for local test/dev environments
@@ -143,6 +145,7 @@ $container->set(Twig::class, function (Configuration $config) {
 
   $twig->offsetSet('game_name', $config->get('site.game_name'));
   $twig->offsetSet('site_title', $config->get('site.title'));
+  $twig->offsetSet('weblogin_url', $config->get('auth.weblogin_url'));
 
   return $twig;
 });

@@ -36,7 +36,7 @@
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="https://my.bzflag.org/weblogin.php?action=weblogin&amp;url={{ full_url_for('login', {'token': '%TOKEN%', 'username': '%USERNAME%'}) | url_encode }}">Log In</a>
+                        <a class="nav-link" href="{{ weblogin_url }}{{ full_url_for('login', {'token': '%TOKEN%', 'username': '%USERNAME%'}) | url_encode }}">Log In</a>
                     </li>
                     {% endif %}
                 </ul>
