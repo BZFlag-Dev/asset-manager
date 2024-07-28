@@ -88,16 +88,16 @@
         },
         {
             "name": "dflydev/dot-access-data",
-            "version": "v3.0.2",
+            "version": "v3.0.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dflydev/dflydev-dot-access-data.git",
-                "reference": "f41715465d65213d644d3141a6a93081be5d3549"
+                "reference": "a23a2bf4f31d3518f3ecb38660c95715dfead60f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dflydev/dflydev-dot-access-data/zipball/f41715465d65213d644d3141a6a93081be5d3549",
-                "reference": "f41715465d65213d644d3141a6a93081be5d3549",
+                "url": "https://api.github.com/repos/dflydev/dflydev-dot-access-data/zipball/a23a2bf4f31d3518f3ecb38660c95715dfead60f",
+                "reference": "a23a2bf4f31d3518f3ecb38660c95715dfead60f",
                 "shasum": ""
             },
             "require": {
@@ -157,9 +157,9 @@
             ],
             "support": {
                 "issues": "https://github.com/dflydev/dflydev-dot-access-data/issues",
-                "source": "https://github.com/dflydev/dflydev-dot-access-data/tree/v3.0.2"
+                "source": "https://github.com/dflydev/dflydev-dot-access-data/tree/v3.0.3"
             },
-            "time": "2022-10-27T11:44:00+00:00"
+            "time": "2024-07-08T12:26:09+00:00"
         },
         {
             "name": "laravel/serializable-closure",
@@ -803,16 +803,16 @@
         },
         {
             "name": "php-di/php-di",
-            "version": "7.0.6",
+            "version": "7.0.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHP-DI/PHP-DI.git",
-                "reference": "8097948a89f6ec782839b3e958432f427cac37fd"
+                "reference": "e87435e3c0e8f22977adc5af0d5cdcc467e15cf1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHP-DI/PHP-DI/zipball/8097948a89f6ec782839b3e958432f427cac37fd",
-                "reference": "8097948a89f6ec782839b3e958432f427cac37fd",
+                "url": "https://api.github.com/repos/PHP-DI/PHP-DI/zipball/e87435e3c0e8f22977adc5af0d5cdcc467e15cf1",
+                "reference": "e87435e3c0e8f22977adc5af0d5cdcc467e15cf1",
                 "shasum": ""
             },
             "require": {
@@ -860,7 +860,7 @@
             ],
             "support": {
                 "issues": "https://github.com/PHP-DI/PHP-DI/issues",
-                "source": "https://github.com/PHP-DI/PHP-DI/tree/7.0.6"
+                "source": "https://github.com/PHP-DI/PHP-DI/tree/7.0.7"
             },
             "funding": [
                 {
@@ -872,7 +872,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2023-11-02T10:04:50+00:00"
+            "time": "2024-07-21T15:55:45+00:00"
         },
         {
             "name": "php-di/slim-bridge",
@@ -1106,16 +1106,16 @@
         },
         {
             "name": "psr/http-message",
-            "version": "1.1",
+            "version": "2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-fig/http-message.git",
-                "reference": "cb6ce4845ce34a8ad9e68117c10ee90a29919eba"
+                "reference": "402d35bcb92c70c026d1a6a9883f06b2ead23d71"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-fig/http-message/zipball/cb6ce4845ce34a8ad9e68117c10ee90a29919eba",
-                "reference": "cb6ce4845ce34a8ad9e68117c10ee90a29919eba",
+                "url": "https://api.github.com/repos/php-fig/http-message/zipball/402d35bcb92c70c026d1a6a9883f06b2ead23d71",
+                "reference": "402d35bcb92c70c026d1a6a9883f06b2ead23d71",
                 "shasum": ""
             },
             "require": {
@@ -1124,7 +1124,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "1.1.x-dev"
+                    "dev-master": "2.0.x-dev"
                 }
             },
             "autoload": {
@@ -1139,7 +1139,7 @@
             "authors": [
                 {
                     "name": "PHP-FIG",
-                    "homepage": "http://www.php-fig.org/"
+                    "homepage": "https://www.php-fig.org/"
                 }
             ],
             "description": "Common interface for HTTP messages",
@@ -1153,9 +1153,9 @@
                 "response"
             ],
             "support": {
-                "source": "https://github.com/php-fig/http-message/tree/1.1"
+                "source": "https://github.com/php-fig/http-message/tree/2.0"
             },
-            "time": "2023-04-04T09:50:52+00:00"
+            "time": "2023-04-04T09:54:51+00:00"
         },
         {
             "name": "psr/http-server-handler",
@@ -1564,27 +1564,27 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/blast007/Twig-View.git",
-                "reference": "22451ca0462d256821598d2c7bf7578c3e1d4ee8"
+                "reference": "65c1a9fcc0499cb5479eddc5e2bc9a4f141f62df"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/blast007/Twig-View/zipball/22451ca0462d256821598d2c7bf7578c3e1d4ee8",
-                "reference": "22451ca0462d256821598d2c7bf7578c3e1d4ee8",
+                "url": "https://api.github.com/repos/blast007/Twig-View/zipball/65c1a9fcc0499cb5479eddc5e2bc9a4f141f62df",
+                "reference": "65c1a9fcc0499cb5479eddc5e2bc9a4f141f62df",
                 "shasum": ""
             },
             "require": {
                 "php": "^7.4 || ^8.0",
-                "psr/http-message": "^1.1",
-                "slim/slim": "^4.11",
-                "symfony/polyfill-php81": "^1.27",
-                "twig/twig": "^3.6"
+                "psr/http-message": "^1.1 || ^2.0",
+                "slim/slim": "^4.12",
+                "symfony/polyfill-php81": "^1.29",
+                "twig/twig": "^3.8"
             },
             "require-dev": {
                 "phpspec/prophecy-phpunit": "^2.0",
-                "phpstan/phpstan": "^1.10.22",
+                "phpstan/phpstan": "^1.10.59",
                 "phpunit/phpunit": "^9.6",
                 "psr/http-factory": "^1.0",
-                "squizlabs/php_codesniffer": "^3.7"
+                "squizlabs/php_codesniffer": "^3.9"
             },
             "type": "library",
             "autoload": {
@@ -1640,7 +1640,7 @@
             "support": {
                 "source": "https://github.com/blast007/Twig-View/tree/fixbasepath"
             },
-            "time": "2023-07-30T12:14:51+00:00"
+            "time": "2024-07-08T13:22:46+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
