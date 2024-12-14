@@ -87,7 +87,7 @@ new_files.addEventListener('change', function(ev) {
 
             // Validate the filename
             if (!(new RegExp('^[a-zA-Z0-9_\-]+\\.[a-z0-9]+$', 'g')).test(file.name)) {
-                errors.push("Filename %FILENAME% contains disallowed characters. Only a-z, A-Z, 0-9, _ and - are allowed, and the file extension must exist, be lowercase, and contain only a-z.");
+                errors.push("Filename %FILENAME% contains disallowed characters. Only a-z, A-Z, 0-9, _ and - are allowed, and the file extension must exist, be lowercase, and contain only a-z.".replace('%FILENAME%', file.name));
                 continue;
             }
 
