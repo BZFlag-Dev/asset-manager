@@ -490,7 +490,7 @@ class ManagementController
 
       // Verify the filename only contains specific characters
       if (!v::regex('/^[a-zA-Z0-9_\-]+\.[a-z0-9]+$/')->validate($filename)) {
-        $file_errors[$index][] = 'The filename contains disallowed characters. Only a-z, A-Z, 0-9, _ and - are allowed, and the file extension must exist, be lowercase, and contain only a-z.';
+        $file_errors[$index][] = 'The filename contains disallowed characters. Only a-z, A-Z, 0-9, _ and - are allowed, and the file extension must exist, be lowercase, and contain only a-z and 0-9.';
         continue;
       }
 
