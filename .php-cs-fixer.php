@@ -2,7 +2,7 @@
 
 $finder = PhpCsFixer\Finder::create()
   ->exclude('var')
-  ->exclude('tools')
+  ->exclude('tools/vendor')
   ->exclude('views')
   ->exclude('vendor')
   ->notPath('config.php')
@@ -43,4 +43,5 @@ return $config->setRules([
 ])
   ->setIndent("  ")
   ->setFinder($finder)
+  ->setRiskyAllowed(true)
   ;

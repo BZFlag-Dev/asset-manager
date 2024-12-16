@@ -43,7 +43,7 @@ class DirectoryIndexController
 
     // Iterate through the contents of this path and enumerate directories
     $iter = new DirectoryIterator("{$config->get('path.files')}/$path");
-    foreach($iter as $info) {
+    foreach ($iter as $info) {
       // Skip . and ..
       if ($info->isDot()) {
         continue;

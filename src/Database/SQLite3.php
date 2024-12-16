@@ -188,8 +188,7 @@ class SQLite3 implements DatabaseInterface
       $stmt = $this->db->prepare(/** @lang SQLite */ 'INSERT INTO asset (path, bzid, username, filename, file_size, mime_type, author, source_url, license_id, license_name, license_url, license_text, hash_sha256, approved_by) VALUES (:path, :bzid, :username, :filename, :file_size, :mime_type, :author, :source_url, :license_id, :license_name, :license_url, :license_text, :hash_sha256, :approved_by)');
       $stmt->execute($data);
       $id = $this->db->lastInsertId();
-    }
-    catch (PDOException $e) {
+    } catch (PDOException $e) {
       $this->logger->critical($e);
       return null;
     }

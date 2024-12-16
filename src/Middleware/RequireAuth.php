@@ -60,7 +60,7 @@ class RequireAuth
     $attributes = $reflection_method->getAttributes();
 
     // Look through the attributes and process AuthRequirement and JSONResponse
-    foreach($attributes as $attribute) {
+    foreach ($attributes as $attribute) {
       if ($attribute->getName() === 'App\Attribute\AuthRequirement') {
         $instance = $attribute->newInstance();
         $needs_auth = $instance->needs_auth;

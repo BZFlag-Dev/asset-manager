@@ -31,7 +31,6 @@ use Exception;
 use InvalidArgumentException;
 use League\Config\Configuration;
 use Monolog\Logger;
-use PDOException;
 use PHPMailer\PHPMailer\PHPMailer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -76,7 +75,7 @@ class ManagementController
           }
         }
 
-        foreach($queue as &$asset) {
+        foreach ($queue as &$asset) {
           // Figure out what license name to show on assets pending approval
           if ($asset['change_requested'] === 0 && $asset['license_id'] !== 'Other') {
             if ($spdx->validate($asset['license_id'])) {
@@ -218,7 +217,7 @@ class ManagementController
       $mailer->msgHTML($twig->fetch('email/queue_notification.html.twig'));
       $mailer->AltBody = $twig->fetch('email/queue_notification.text.twig');
 
-      foreach($config->get('email.notify_addresses') as $email_address) {
+      foreach ($config->get('email.notify_addresses') as $email_address) {
         try {
           $mailer->addAddress($email_address);
         } catch (Exception) {
@@ -297,12 +296,12 @@ class ManagementController
     if ($result !== false) {
       $result = explode("\n", str_replace(["\r\n", "\r"], "\n", $result));
 
-      foreach($result as $line) {
+      foreach ($result as $line) {
         if (str_starts_with($line, 'TOKGOOD: ')) {
           $foundTOKGOOD = true;
           $_SESSION['is_admin'] = (
             ($pos = strpos($line, ':', 8)) !== false &&
-              in_array($config->get('auth.admin_group'), explode(':', substr($line, $pos+1)), true)
+              in_array($config->get('auth.admin_group'), explode(':', substr($line, $pos + 1)), true)
           );
         } elseif (str_starts_with($line, 'BZID: ')) {
           list($_SESSION['bzid'], $_SESSION['username']) = explode(' ', substr($line, 6), 2);
@@ -470,7 +469,7 @@ class ManagementController
     $filenames = [];
     $successful_files = 0;
 
-    foreach($files['assets'] as $index => $upload) {
+    foreach ($files['assets'] as $index => $upload) {
       $file_errors[$index] = [];
 
       // Check the error status first
@@ -629,7 +628,7 @@ class ManagementController
       $mailer->msgHTML($twig->fetch('email/queue_notification.html.twig'));
       $mailer->AltBody = $twig->fetch('email/queue_notification.text.twig');
 
-      foreach($config->get('email.notify_addresses') as $email_address) {
+      foreach ($config->get('email.notify_addresses') as $email_address) {
         try {
           $mailer->addAddress($email_address);
         } catch (Exception) {
@@ -769,21 +768,21 @@ class ManagementController
 
           // Add the approved asset to the database
           if ($db->asset_add([
-              'path' => $path_clean_dir,
-              'bzid' => $queue['bzid'],
-              'username' => $queue['username'],
-              'filename' => $queue['filename'],
-              'file_size' => $queue['file_size'],
-              'mime_type' => $queue['mime_type'],
-              'author' => $queue['author'],
-              'source_url' => $queue['source_url'],
-              'license_id' => $queue['license_id'],
-              'license_name' => $queue['license_name'],
-              'license_url' => $queue['license_url'],
-              'license_text' => $queue['license_text'],
-              'hash_sha256' => $hash_256_final,
-              'approved_by' => $_SESSION['username']
-            ]) === null) {
+            'path' => $path_clean_dir,
+            'bzid' => $queue['bzid'],
+            'username' => $queue['username'],
+            'filename' => $queue['filename'],
+            'file_size' => $queue['file_size'],
+            'mime_type' => $queue['mime_type'],
+            'author' => $queue['author'],
+            'source_url' => $queue['source_url'],
+            'license_id' => $queue['license_id'],
+            'license_name' => $queue['license_name'],
+            'license_url' => $queue['license_url'],
+            'license_text' => $queue['license_text'],
+            'hash_sha256' => $hash_256_final,
+            'approved_by' => $_SESSION['username']
+          ]) === null) {
             $file_errors[$id][] = 'Failed to add asset entry.';
             unlink($path_final);
             continue;
@@ -841,7 +840,7 @@ class ManagementController
 
     // Send notification emails
     $mailer->Subject = sprintf("%s %s - Reviewed Assets", $config->get('site.game_name'), $config->get('site.title'));
-    foreach($notifications as $email_address => $reviews) {
+    foreach ($notifications as $email_address => $reviews) {
       try {
         $mailer->addAddress($email_address);
       } catch (Exception) {

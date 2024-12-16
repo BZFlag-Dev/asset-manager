@@ -21,9 +21,9 @@ declare(strict_types=1);
  */
 
 namespace App\Database;
-use Monolog\Logger;
 
 use League\Config\Configuration;
+use Monolog\Logger;
 
 interface DatabaseInterface
 {
