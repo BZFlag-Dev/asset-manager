@@ -23,10 +23,11 @@ declare(strict_types=1);
 use App\Controller\AssetController;
 use App\Controller\ManagementController;
 use App\Middleware\RequireAuth;
+use DI\Bridge\Slim\Bridge;
 use League\Config\Configuration;
-use PHPMailer\PHPMailer\PHPMailer;
-
-const IN_MANAGER = true;
+use Monolog\Logger;
+use Slim\Views\Twig;
+use Slim\Views\TwigMiddleware;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -41,41 +42,34 @@ session_start([
   'use_trans_sid' => false
 ]);
 
-require __DIR__ . '/../src/common_bootstrap.php';
-global $container;
-global $app;
+$builder = new \DI\ContainerBuilder();
+$builder->addDefinitions(dirname(__DIR__).'/src/di-config.php');
+$container = $builder->build();
+
+// Create our application
+$app = Bridge::create($container);
+
+// Grab a pointer to the configuration
+$config = $app->getContainer()->get(Configuration::class);
+
+// Set our base path
+$app->setBasePath($config->get('site.base_path'));
+
+// Add middleware
+$app->add(TwigMiddleware::createFromContainer($app, Twig::class));
+
+// Set up error handling
+$errorMiddleware = $app->addErrorMiddleware(
+  $config->get('debug'),
+  true,
+  true,
+  $app->getContainer()->get(Logger::class)
+);
 
 $app->add(RequireAuth::class);
 
 // The RoutingMiddleware should be added after our RequireAuth middleware so routing is performed first
 $app->addRoutingMiddleware();
-
-$container->set(PHPMailer::class, function (Configuration $config) {
-  $smtp = $config->get('email.smtp');
-
-  $mailer = new PHPMailer(true);
-  $mailer->isSMTP();
-  $mailer->SMTPKeepAlive = true;
-  $mailer->SMTPSecure = match($smtp['encryption']) {
-    'ssl' => PHPMailer::ENCRYPTION_SMTPS,
-    'tls' => PHPMailer::ENCRYPTION_STARTTLS,
-    default => ''
-  };
-  $mailer->Host = $smtp['host'];
-  $mailer->Port = $smtp['port'];
-  $mailer->XMailer = null;
-  $mailer->setFrom($config->get('email.from_address'), "{$config->get('site.game_name')} {$config->get('site.title')}");
-  $mailer->WordWrap = 80;
-
-  // If we have a username/password, use authentication
-  if (!empty($smtp['username']) && !empty($smtp['password'])) {
-    $mailer->SMTPAuth = true;
-    $mailer->Username = $smtp['username'];
-    $mailer->Password = $smtp['password'];
-  }
-
-  return $mailer;
-});
 
 // Management routes
 $app->get('/', [ManagementController::class, 'home'])->setName('home');

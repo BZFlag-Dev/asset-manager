@@ -21,11 +21,34 @@ declare(strict_types=1);
  */
 
 use App\Controller\DirectoryIndexController;
+use DI\Bridge\Slim\Bridge;
+use League\Config\Configuration;
+use Monolog\Logger;
+use Slim\Views\Twig;
+use Slim\Views\TwigMiddleware;
 
 require __DIR__ . '/vendor/autoload.php';
 
-require __DIR__ . '/src/common_bootstrap.php';
-global $app;
+$builder = new \DI\ContainerBuilder();
+$builder->addDefinitions(dirname(__DIR__).'/src/di-config.php');
+$container = $builder->build();
+
+// Create our application
+$app = Bridge::create($container);
+
+// Grab a pointer to the configuration
+$config = $app->getContainer()->get(Configuration::class);
+
+// Add middleware
+$app->add(TwigMiddleware::createFromContainer($app, Twig::class));
+
+// Set up error handling
+$errorMiddleware = $app->addErrorMiddleware(
+  $config->get('debug'),
+  true,
+  true,
+  $app->getContainer()->get(Logger::class)
+);
 
 // Index page generation for the asset directories
 $app->get('{path:.*}', [DirectoryIndexController::class, 'generate'])->setName('directory_index');
