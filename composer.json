@@ -27,6 +27,19 @@
         "respect/validation": "^2.2",
         "composer/spdx-licenses": "^1.5",
         "phpmailer/phpmailer": "^6.8",
-        "monolog/monolog": "^3.5"
+        "monolog/monolog": "^3.5",
+        "twbs/bootstrap": "^5.3"
+    },
+    "scripts": {
+        "post-update-cmd": [
+            "php -r \"@mkdir('public/css');\"",
+            "php -r \"copy('vendor/twbs/bootstrap/dist/css/bootstrap.min.css', 'public/css/bootstrap.min.css');\"",
+            "php -r \"copy('vendor/twbs/bootstrap/dist/css/bootstrap.min.css.map', 'public/css/bootstrap.min.css.map');\""
+        ],
+        "post-install-cmd": [
+            "php -r \"@mkdir('public/css');\"",
+            "php -r \"copy('vendor/twbs/bootstrap/dist/css/bootstrap.min.css', 'public/css/bootstrap.min.css');\"",
+            "php -r \"copy('vendor/twbs/bootstrap/dist/css/bootstrap.min.css.map', 'public/css/bootstrap.min.css.map');\""
+        ]
     }
 }
