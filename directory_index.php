@@ -30,7 +30,7 @@ use Slim\Views\TwigMiddleware;
 require __DIR__ . '/vendor/autoload.php';
 
 $builder = new \DI\ContainerBuilder();
-$builder->addDefinitions(dirname(__DIR__).'/src/di-config.php');
+$builder->addDefinitions(dirname(__FILE__).'/src/di-config.php');
 $container = $builder->build();
 
 // Create our application
