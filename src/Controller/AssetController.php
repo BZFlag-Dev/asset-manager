@@ -110,17 +110,32 @@ class AssetController
         imagealphablending($thumbnail, false);
         imagesavealpha($thumbnail, true);
 
+        // Copy a resized version of the original to the thumbnail
         imagecopyresampled($thumbnail, $image, 0, 0, 0, 0, $width, $height, $info[0], $info[1]);
 
-        ob_start();
-        if (imageavif($thumbnail)) {
-          $response = $response->withHeader('Content-Type', 'image/avif');
-          $response->getBody()->write(ob_get_contents());
+        // Clean up the original image data
+        imagedestroy($image);
+
+        // Start an output buffer to capture the image data
+        if (ob_start()) {
+          // Attempt to write the image to the buffer in AVIF format
+          if (imageavif($thumbnail)) {
+            // If that worked, we write the response back to the browser
+            $response = $response->withHeader('Content-Type', 'image/avif');
+            $response->getBody()->write(ob_get_clean());
+          } else {
+            // End and discard the output buffer
+            ob_end_clean();
+            $response->getBody()->write("500 Error Generating Thumbnail");
+            $response = $response->withStatus(500);
+          }
         } else {
           $response->getBody()->write("500 Error Generating Thumbnail");
           $response = $response->withStatus(500);
         }
-        ob_end_clean();
+
+        // Free up memory
+        imagedestroy($thumbnail);
       }
     } else {
       $response->getBody()->write("415 Unsupported File Type");
