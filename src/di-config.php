@@ -120,7 +120,8 @@ return [
   Twig::class => function (Configuration $config, SessionHelper $session) {
     $twig = Twig::create(dirname(__DIR__).'/views', [
       'cache' => dirname(__DIR__).'/var/cache/twig',
-      'auto_reload' => true
+      'auto_reload' => true,
+      'use_yield' => true
     ]);
 
     // Get the Twig environment so we can add some global variables
