@@ -22,6 +22,7 @@ declare(strict_types=1);
 
 use App\Controller\AssetController;
 use App\Controller\ManagementController;
+use App\Extra\SessionHelper;
 use App\Middleware\RequireAuth;
 use DI\Bridge\Slim\Bridge;
 use League\Config\Configuration;
@@ -30,17 +31,6 @@ use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
 
 require __DIR__ . '/../vendor/autoload.php';
-
-$session_save_path = ini_get('session.save_path').DIRECTORY_SEPARATOR.'asset-manager';
-if (!is_dir($session_save_path))
-  mkdir($session_save_path);
-session_start([
-  'save_path' => $session_save_path,
-  'gc_maxlifetime' => 60 * 60 * 2,
-  'cookie_httponly' => true,
-  'cookie_samesite' => 'Strict',
-  'use_trans_sid' => false
-]);
 
 $builder = new \DI\ContainerBuilder();
 $builder->addDefinitions(dirname(__DIR__).'/src/di-config.php');
@@ -55,7 +45,10 @@ $config = $app->getContainer()->get(Configuration::class);
 // Set our base path
 $app->setBasePath($config->get('site.base_path'));
 
-// Add middleware
+// Start the session
+$app->getContainer()->get(SessionHelper::class)->start();
+
+// Add Twig middleware
 $app->add(TwigMiddleware::createFromContainer($app, Twig::class));
 
 // Set up error handling

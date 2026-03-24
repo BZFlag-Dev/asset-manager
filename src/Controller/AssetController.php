@@ -24,6 +24,7 @@ namespace App\Controller;
 
 use App\Attribute\AuthRequirement;
 use App\Database\DatabaseInterface;
+use App\Extra\SessionHelper;
 use League\Config\Configuration;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -33,10 +34,10 @@ class AssetController
 {
   // We'll handle auth requirements inside the function
   #[AuthRequirement('none')]
-  public function view(ServerRequestInterface $request, ResponseInterface $response, Configuration $config, DatabaseInterface $db, string $bzid, int $queueid, int $width = 0, int $height = 0): ResponseInterface
+  public function view(ServerRequestInterface $request, ResponseInterface $response, Configuration $config, DatabaseInterface $db, SessionHelper $session, string $bzid, int $queueid, int $width = 0, int $height = 0): ResponseInterface
   {
     // Require that a user is logged in and is either viewing their own assets or are an admin
-    if (empty($_SESSION['username']) || (!$_SESSION['is_admin'] && $_SESSION['bzid'] !== $bzid)) {
+    if (!$session->exists('username') || (!$session->get('is_admin', false) && $session->get('bzid') !== $bzid)) {
       $response->getBody()->write("401 Unauthorized");
       return $response
           ->withStatus(401);

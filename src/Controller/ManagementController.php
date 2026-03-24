@@ -25,6 +25,7 @@ namespace App\Controller;
 use App\Attribute\AuthRequirement;
 use App\Attribute\JSONResponse;
 use App\Database\DatabaseInterface;
+use App\Extra\SessionHelper;
 use App\Extra\Utils;
 use Composer\Spdx\SpdxLicenses;
 use Exception;
@@ -42,14 +43,14 @@ use Slim\Views\Twig;
 class ManagementController
 {
   #[AuthRequirement('none')]
-  public function home(ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx, Configuration $config): ResponseInterface
+  public function home(ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx, Configuration $config, SessionHelper $session): ResponseInterface
   {
     $queue = null;
     $licenses = null;
     $upload_config = null;
 
-    if (!empty($_SESSION['bzid'])) {
-      $queue = $db->queue_get_by_bzid($_SESSION['bzid']);
+    if ($session->exists('bzid')) {
+      $queue = $db->queue_get_by_bzid($session->get('bzid'));
       $upload_config = $config->get('asset.upload');
       if ($queue) {
         $licenses = [
@@ -145,7 +146,7 @@ class ManagementController
 
   #[AuthRequirement('user')]
   #[JSONResponse]
-  public function changes(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger): ResponseInterface
+  public function changes(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
   {
     // Grab a copy of the form data
     $data = $request->getParsedBody();
@@ -159,7 +160,7 @@ class ManagementController
     // Loop through
     foreach ($data['assets'] as $id => $asset) {
       // Fetch the current information
-      $row = $db->queue_get_by_bzid_and_id($_SESSION['bzid'], (int)$id);
+      $row = $db->queue_get_by_bzid_and_id($session->get('bzid'), (int)$id);
 
       if ($row === null) {
         $return['asset_errors'][$id][] = 'Could not locate this asset in the database';
@@ -245,7 +246,7 @@ class ManagementController
   }
 
   #[AuthRequirement('none')]
-  public function login(App $app, ResponseInterface $response, Twig $twig, Configuration $config, Logger $logger, $token = '', $username = ''): ResponseInterface
+  public function login(App $app, ResponseInterface $response, Twig $twig, Configuration $config, Logger $logger, SessionHelper $session, $token = '', $username = ''): ResponseInterface
   {
     if (empty($token) || empty($username)) {
       return $response
@@ -299,18 +300,33 @@ class ManagementController
       foreach ($result as $line) {
         if (str_starts_with($line, 'TOKGOOD: ')) {
           $foundTOKGOOD = true;
-          $_SESSION['is_admin'] = (
+          $session->set('is_admin', (
             ($pos = strpos($line, ':', 8)) !== false &&
               in_array($config->get('auth.admin_group'), explode(':', substr($line, $pos + 1)), true)
-          );
+          ));
         } elseif (str_starts_with($line, 'BZID: ')) {
-          list($_SESSION['bzid'], $_SESSION['username']) = explode(' ', substr($line, 6), 2);
-          // TODO: Allow other characters? Spaces?
-          $_SESSION['clean_username'] = Utils::clean_username($_SESSION['username']);
-          // If the cleaned username is empty, bail out
-          if (strlen($_SESSION['clean_username']) === 0) {
+          // Split the value of the BZID line into at most two parts
+          $bzid_and_username = explode(' ', substr($line, 6), 2);
+
+          // Verify that we found two values (the bzid and the username, the latter of which can have spaces)
+          if (sizeof($bzid_and_username) !== 2) {
             break;
           }
+
+          // Try to create a clean username that we'll use for the filesystem
+          $clean_username = Utils::clean_username($bzid_and_username[1]);
+
+          // If the cleaned username is empty, bail out
+          if (strlen($clean_username) === 0) {
+            break;
+          }
+
+          // Set the session values
+          $session->set('bzid', $bzid_and_username[0]);
+          $session->set('username', $bzid_and_username[1]);
+          $session->set('clean_username', $clean_username);
+
+          // Indicate that we found a valid BZID line
           $foundBZID = true;
         }
       }
@@ -319,8 +335,7 @@ class ManagementController
     // If there was no response from the server list, or we had a problem verifying the token,
     // clear the session and show an error.
     if ($result === false || !$foundBZID || !$foundTOKGOOD) {
-      $_SESSION = [];
-      session_destroy();
+      $session->clear();
       $logger->error("Login validation error for $username from {$_SERVER['REMOTE_ADDR']}", [
         'result' => $result,
         'foundBZID' => $foundBZID,
@@ -332,21 +347,20 @@ class ManagementController
     }
 
     // Store the user-agent so that we can compare later for session validation
-    $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+    $session->set('user_agent', $_SERVER['HTTP_USER_AGENT']);
 
     return $twig->render($response, 'login.html.twig', [
-      'username' => $_SESSION['username'],
-      'bzid' => $_SESSION['bzid'],
-      'is_admin' => $_SESSION['is_admin']
+      'username' => $session->get('username'),
+      'bzid' => $session->get('bzid'),
+      'is_admin' => $session->get('is_admin', false)
     ]);
   }
 
   #[AuthRequirement('none')]
-  public function logout(App $app, ResponseInterface $response): ResponseInterface
+  public function logout(App $app, ResponseInterface $response, SessionHelper $session): ResponseInterface
   {
     // Clear the session and return to the homepage
-    $_SESSION = [];
-    session_destroy();
+    $session->destroy();
     return $response
         ->withHeader('Location', $app->getRouteCollector()->getRouteParser()->urlFor('home'))
         ->withStatus(302);
@@ -361,7 +375,7 @@ class ManagementController
   }
 
   #[AuthRequirement('user')]
-  public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, SpdxLicenses $spdx): ResponseInterface
+  public function upload(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, SpdxLicenses $spdx, SessionHelper $session): ResponseInterface
   {
     // Fetch the upload configuration options and clamp values to the PHP maximums
     $upload_config = $config->get('asset.upload');
@@ -403,13 +417,13 @@ class ManagementController
     return $twig->render($response, 'upload.html.twig', [
       'upload_config' => $upload_config,
       'licenses' => $licenses,
-      'upload_directory' => $_SESSION['clean_username']
+      'upload_directory' => $session->get('clean_username')
     ]);
   }
 
   #[AuthRequirement('user')]
   #[JSONResponse]
-  public function upload_process(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger): ResponseInterface
+  public function upload_process(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
   {
     // Fetch the upload configuration options and clamp values to the PHP maximums
     $upload_config = $config->get('asset.upload');
@@ -515,7 +529,7 @@ class ManagementController
 
       // Check if this is a supported mime type
       if (!array_key_exists($mime_type, $upload_config['types'])) {
-        // TODO: Should we list all support types?
+        // TODO: Should we list all supported types?
         $file_errors[$index][] = 'Unsupported MIME type.';
         continue;
       }
@@ -545,8 +559,8 @@ class ManagementController
       }
 
       // Build the temporary and final destination paths
-      $path_queue = $config->get('path.upload')."/{$_SESSION['bzid']}_$filename";
-      $path_final = $config->get('path.files')."/{$_SESSION['clean_username']}/$filename";
+      $path_queue = $config->get('path.upload')."/{$session->get('bzid')}_$filename";
+      $path_final = $config->get('path.files')."/{$session->get('clean_username')}/$filename";
 
       // Verify that a file with the same name doesn't already exist in the queue for this user
       if (file_exists($path_queue)) {
@@ -588,8 +602,8 @@ class ManagementController
 
         try {
           $db->queue_add([
-            'bzid' => $_SESSION['bzid'],
-            'username' => $_SESSION['username'],
+            'bzid' => $session->get('bzid'),
+            'username' => $session->get('username'),
             'email' => $data['uploader_email'],
             'filename' => $filename,
             'file_size' => $file_size,
@@ -603,8 +617,8 @@ class ManagementController
           ]);
         } catch (Exception) {
           $logger->critical("A database error occurred while adding file to the queue", [
-            'bzid' => $_SESSION['bzid'],
-            'username' => $_SESSION['username'],
+            'bzid' => $session->get('bzid'),
+            'username' => $session->get('username'),
             'filename' => $filename,
             'file_size' => $file_size,
           ]);
@@ -693,7 +707,7 @@ class ManagementController
 
   #[AuthRequirement('admin')]
   #[JSONResponse]
-  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger): ResponseInterface
+  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
   {
     $data = $request->getParsedBody();
 
@@ -781,7 +795,7 @@ class ManagementController
             'license_url' => $queue['license_url'],
             'license_text' => $queue['license_text'],
             'hash_sha256' => $hash_256_final,
-            'approved_by' => $_SESSION['username']
+            'approved_by' => $session->get('username')
           ]) === null) {
             $file_errors[$id][] = 'Failed to add asset entry.';
             unlink($path_final);

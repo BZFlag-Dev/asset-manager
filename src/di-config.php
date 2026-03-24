@@ -7,6 +7,7 @@ use Monolog\Logger;
 use Nette\Schema\Expect;
 use PHPMailer\PHPMailer\PHPMailer;
 use Slim\Views\Twig;
+use App\Extra\SessionHelper;
 
 return [
   Configuration::class => function () {
@@ -22,7 +23,7 @@ return [
         'title' => Expect::string('Asset Manager'),
         // Base URL of the site, used for generating links to the final asset locations
         'base_url' => Expect::string()->required(),
-        // Base path
+        // Base path, without trailing slash
         'base_path' => Expect::string('/manage'),
         // Content takedown requests
         'takedown_address' => Expect::email()->required()
@@ -79,6 +80,9 @@ return [
           'encryption' => Expect::anyOf('null', 'ssl', 'tls')->default('null')
         ])
       ]),
+      'session' => Expect::structure([
+        'lifetime' => Expect::anyOf(Expect::string(), Expect::int()->min(0))->default('2 hours'),
+      ]),
       'auth' => Expect::structure([
         // The URL to the BZFlag list server
         'list_url' => Expect::string('https://my.bzflag.org/db/'),
@@ -109,21 +113,30 @@ return [
     return new \App\Database\SQLite3($config, $logger);
   },
 
-  Twig::class => function (Configuration $config) {
+  SessionHelper::class => function (Configuration $config, Logger $logger) {
+    return new SessionHelper($config, $logger);
+  },
+
+  Twig::class => function (Configuration $config, SessionHelper $session) {
     $twig = Twig::create(dirname(__DIR__).'/views', [
       'cache' => dirname(__DIR__).'/var/cache/twig',
       'auto_reload' => true
     ]);
 
-    if (!empty($_SESSION['username'])) {
-      $twig->offsetSet('username', $_SESSION['username']);
-      $twig->offsetSet('bzid', $_SESSION['bzid']);
-      $twig->offsetSet('is_admin', $_SESSION['is_admin']);
+    // Get the Twig environment so we can add some global variables
+    $env = $twig->getEnvironment();
+
+    // If there is a session, pass some vars onto Twig
+    if ($session->exists('username')) {
+      $env->addGlobal('username', $session->get('username'));
+      $env->addGlobal('bzid', $session->get('bzid'));
+      $env->addGlobal('is_admin', $session->get('is_admin', false));
     }
 
-    $twig->offsetSet('game_name', $config->get('site.game_name'));
-    $twig->offsetSet('site_title', $config->get('site.title'));
-    $twig->offsetSet('weblogin_url', $config->get('auth.weblogin_url'));
+    // Add some other globals
+    $env->addGlobal('game_name', $config->get('site.game_name'));
+    $env->addGlobal('site_title', $config->get('site.title'));
+    $env->addGlobal('weblogin_url', $config->get('auth.weblogin_url'));
 
     return $twig;
   },

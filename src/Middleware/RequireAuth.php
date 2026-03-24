@@ -22,6 +22,7 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+use App\Extra\SessionHelper;
 use League\Config\Configuration;
 use Nyholm\Psr7\Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -32,7 +33,7 @@ use Slim\Routing\RouteContext;
 
 class RequireAuth
 {
-  public function __construct(protected App $app, protected Configuration $config)
+  public function __construct(protected App $app, protected Configuration $config, protected SessionHelper $session)
   {
   }
 
@@ -70,16 +71,10 @@ class RequireAuth
       }
     }
 
-    /*
-    print_r(compact('use_json', 'needs_auth', 'needs_admin'));
-    exit;
-    */
-
-
     // Check if we have a valid session
     $valid_session =
       // Must have a bzid, username, and clean_username set
-      !empty($_SESSION['bzid']) && !empty($_SESSION['username']) && !empty($_SESSION['clean_username']) &&
+      $this->session->exists('bzid') && $this->session->exists('username') && $this->session->exists('clean_username') &&
 
       // Check if last activity exceeds our limit
       // TODO: Should we check this here or just rely on PHP's own handling?
@@ -88,13 +83,12 @@ class RequireAuth
       // TODO: Should we bother with a max duration?
 
       // Check if the user agent changed
-      ($_SESSION['user_agent'] ?? '') === $_SERVER['HTTP_USER_AGENT']
+      $this->session->get('user_agent', '') === $_SERVER['HTTP_USER_AGENT']
     ;
 
     // If the session is not valid, check if the user can view this page
     if (!$valid_session) {
-      // TODO: Should we do this?
-      $_SESSION = [];
+      $this->session->clear();
 
       // If the page needs auth, redirect or send an error
       if ($needs_auth) {
@@ -116,11 +110,8 @@ class RequireAuth
         }
       }
     } else {
-      // Update the session last used time
-      $_SESSION['when_last_used'] = time();
-
       // If this page requires admin rights and the user isn't an admin...
-      if ($needs_admin && $_SESSION['is_admin'] !== true) {
+      if ($needs_admin && $this->session->get('is_admin', false) !== true) {
         $response = new Response();
         if ($use_json) {
           $response->getBody()->write(json_encode([
