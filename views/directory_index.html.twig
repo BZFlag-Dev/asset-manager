@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="darkreader-lock">
-    <title>{% if page_title %}{{ page_title }} - {% endif %}{{ game_name }} {{ site_title }}</title>
+    <title>{% if page_title is defined %}{{ page_title }} - {% endif %}{{ game_name }} {{ site_title }}</title>
     <link href="{{ base_path }}/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ base_path }}/css/style.css" rel="stylesheet">
 </head>
@@ -54,7 +54,7 @@
 {% endif %}
 {% for directory in directories %}
         <tr>
-            <td><a href="{{ directory.path }}">&lt;{{ directory.name }}&gt;</a></td>
+            <td><a href="{{ directory }}/">&lt;{{ directory }}&gt;</a></td>
             <td>Directory</td>
             <td></td>
             <td></td>
@@ -62,9 +62,9 @@
         </tr>
 {% endfor %}
 {% set has_legacy = false %}
-{% for asset in assets %}
+{% for filename,asset in assets %}
         <tr>
-            <td><a href="{{ asset.filename | escape('html_attr') }}">{{ asset.filename | escape }}</a></td>
+            <td><a href="{{ filename | escape('html_attr') }}">{{ filename | escape }}</a></td>
             <td>{{ bytesToSize(asset.file_size) }}</td>
             <td>{{ asset.author | escape }}</td>
             <td>{{ asset.license_name | escape }}{% if asset.license_id == 'Legacy' %}*{% set has_legacy = true %}{% elseif asset.license_id == 'Other' %} <span class="expand" data-index="{{ loop.index }}">🛈</span>{% endif %}</td>
@@ -72,7 +72,7 @@
         </tr>
 {% if asset.license_id == 'Other' %}
         <tr class="d-none" data-index="{{ loop.index }}">
-            <td colspan="4">
+            <td colspan="5">
                 {% if asset.license_url %}
                     <strong>License URL:</strong> <a href="{{ asset.license_url | escape('html_attr') }}" target="_blank" rel="noreferrer">{{ asset.license_url | escape }}</a>{% if asset.license_text %}<br>{% endif %}
                 {% endif %}

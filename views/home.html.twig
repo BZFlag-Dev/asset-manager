@@ -12,34 +12,34 @@
 
     {% if pending %}
         <hr>
-        {% for asset in pending|filter(v => v.change_requested == 1) %}
+        {% for queue in pending|filter(v => v.changeRequested == 1) %}
             {% if loop.first %}
                 <form action="{{ url_for('submit_changes') }}" id="changes" class="hide-other-licenses">
                 <div class="my-3">Changes have been requested for the following uploads:</div>
             {% endif %}
-                    <div class="asset mb-3 pb-3 border-bottom">
-                        <input type="hidden" class="asset_index" value="{{ asset.id }}">
+                    <div class="upload mb-3 pb-3 border-bottom">
+                        <input type="hidden" class="asset_index" value="{{ queue.asset.id }}">
                         <div class="row mb-3">
                             <div class="col me-3">
                                 <h3>Changes Requested</h3>
-                                {{ asset.details|escape|nl2br }}
+                                {{ queue.details|escape|nl2br }}
                             </div>
                             <div class="col me-3 position-relative file-info">
                                 <h3>File Information</h3>
-                                <canvas class="file-preview d-none position-absolute" id="preview_{{ asset.id }}" width="512" height="512"></canvas>
+                                <canvas class="file-preview d-none position-absolute" id="preview_{{ queue.asset.id }}" width="512" height="512"></canvas>
                                 <div class="file-metadata">
                                     Filename:<br>
-                                    <span class="file-name font-monospace bg-dark-subtle p-1">{{ asset.filename }}</span><br>
-                                    File size: <span class="file-size">{{ bytesToSize(asset.file_size) }}</span><br>
+                                    <span class="file-name font-monospace bg-dark-subtle p-1">{{ queue.asset.filename }}</span><br>
+                                    File size: <span class="file-size">{{ bytesToSize(queue.asset.fileSize) }}</span><br>
                                 </div>
                             </div>
                             <div class="col">
                                 <h3>Source Information</h3>
                                 <label class="form-label" for="author">Author Name:</label>
-                                <input type="text" class="form-control" id="author" name="assets[{{ asset.id }}][author]" required value="{{ asset.author|escape('html_attr') }}">
+                                <input type="text" class="form-control" id="author_{{ queue.asset.id }}" name="assets[{{ queue.asset.id }}][author]" required value="{{ queue.asset.author|escape('html_attr') }}">
 
                                 <label class="form-label" for="source_url">Source URL:</label>
-                                <input type="url" class="form-control" id="source_url" name="assets[{{ asset.id }}][source_url]" value="{{ asset.source_url|escape('html_attr') }}">
+                                <input type="url" class="form-control" id="source_url_{{ queue.asset.id }}" name="assets[{{ queue.asset.id }}][source_url]" value="{{ queue.asset.sourceUrl|escape('html_attr') }}">
                             </div>
                         </div>
                         <div class="row d-none asset-error">
@@ -51,39 +51,39 @@
                         <div class="row">
                             <div class="col">
                                 <label class="form-label" for="license">License for this file:</label>
-                                <select class="form-select license-select" id="license" name="assets[{{ asset.id }}][license]" required>
-                                    <option value="">Select a license</option>
+                                <select class="form-select license-select" id="license_{{ queue.asset.id }}" name="assets[{{ queue.asset.id }}][license]" required>
+                                    <option value="{{ queue.asset.licenseId }}">{{ queue.asset.licenseDisplayName }}</option>
                                     <optgroup label="Popular Licenses">
                                         {% for id, name in licenses.popular %}
-                                            <option value="{{ id }}"{% if id == asset.license_id %} selected{% endif %}>{{ name }}</option>
+                                            <option value="{{ id }}">{{ name }}</option>
                                         {% endfor %}
                                     </optgroup>
                                     <optgroup label="Common Licenses">
                                         {% for id, name in licenses.common %}
-                                            <option value="{{ id }}"{% if id == asset.license_id %} selected{% endif %}>{{ name }}</option>
+                                            <option value="{{ id }}">{{ name }}</option>
                                         {% endfor %}
                                     </optgroup>
                                     {% if upload_config.licenses.allow_other %}
-                                        <option value="Other"{% if 'Other' == asset.license_id %} selected{% endif %}>Other Approved License</option>
+                                        <option value="Other">Other Approved License</option>
                                     {% endif %}
                                     <optgroup label="Other OSI-Approved Licenses">
                                         {% for id, name in licenses.other %}
-                                            <option value="{{ id }}"{% if id == asset.license_id %} selected{% endif %}>{{ name }}</option>
+                                            <option value="{{ id }}">{{ name }}</option>
                                         {% endfor %}
                                     </optgroup>
                                 </select>
 
-                                <div class="custom-license d-none">
+                                <div class="custom-license{% if queue.asset.licenseId != 'Other' %} d-none{% endif %}">
                                     <label class="form-label" for="license_name">License Name:</label>
-                                    <input type="text" class="form-control license-name" id="license_name" name="assets[{{ asset.id }}][license_name]" value="{{ asset.license_name|escape('html_attr') }}">
+                                    <input type="text" class="form-control license-name" id="license_name_{{ queue.asset.id }}" name="assets[{{ queue.asset.id }}][license_name]" value="{{ queue.asset.licenseName|escape('html_attr') }}">
 
                                     <label class="form-label" for="license_url">License URL:</label>
-                                    <input type="text" class="form-control license-url" id="license_url" name="assets[{{ asset.id }}][license_url]" value="{{ asset.license_url|escape('html_attr') }}">
+                                    <input type="text" class="form-control license-url" id="license_url_{{ queue.asset.id }}" name="assets[{{ queue.asset.id }}][license_url]" value="{{ queue.asset.licenseUrl|escape('html_attr') }}">
                                 </div>
                             </div>
-                            <div class="col custom-license d-none">
+                            <div class="col custom-license{% if queue.asset.licenseId != 'Other' %} d-none{% endif %}">
                                 <label class="form-label" for="license_text">License Text:</label>
-                                <textarea class="form-control license-text" id="license_text" name="assets[{{ asset.id }}][license_text]" rows="8">{{ asset.license_text }}</textarea>
+                                <textarea class="form-control license-text" id="license_text_{{ queue.asset.id }}" name="assets[{{ queue.asset.id }}][license_text]" rows="8">{{ queue.asset.licenseText }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -97,7 +97,7 @@
             {% endif %}
         {% endfor %}
 
-        {% for asset in pending|filter(v => v.change_requested == 0) %}
+        {% for queue in pending|filter(v => v.changeRequested == 0) %}
             {% if loop.first %}
                 <div class="my-3">Here are your images that are currently pending moderation:</div>
                 <table class="table table-striped table-bordered mt-2 mb-0">
@@ -111,18 +111,18 @@
             {% endif %}
                     <tr>
                         <td>
-                            {% if asset.mime_type starts with 'image/' %}
-                            <img src="{{ url_for('view', {'bzid': asset.bzid, 'queueid': asset.id, width: 128, height: 128}) }}" alt="{{ asset.filename }} by {{ asset.author }}">
+                            {% if queue.asset.mimeType starts with 'image/' %}
+                            <img src="{{ url_for('view', {'bzid': queue.asset.bzid, 'queueid': queue.asset.id, width: 128, height: 128}) }}" alt="{{ queue.asset.filename }} by {{ queue.asset.author }}">
                             {% else %}
                             Preview unavailable for this file type
                             {% endif %}
                         </td>
                         <td>
-                            <strong>Filename:</strong> {{ asset.filename }}<br>
-                            <strong>Author Name:</strong> {{ asset.author }}<br>
-                            <strong>License:</strong> {{ asset.license_name }}<br>
-                            {% if asset.license_url %}<strong>License URL:</strong> <a href="{{ asset.license_url }}" target="_blank" rel="noopener">View License</a><br>{% endif %}
-                            {% if asset.license_text %}<strong>License Text:</strong>{{ asset.license_text | nl2br }}{% endif %}
+                            <strong>Filename:</strong> {{ queue.asset.filename }}<br>
+                            <strong>Author Name:</strong> {{ queue.asset.author }}<br>
+                            <strong>License:</strong> {{ queue.asset.licenseDisplayName }}<br>
+                            {% if queue.asset.licenseUrl %}<strong>License URL:</strong> <a href="{{ queue.asset.licenseUrl }}" target="_blank" rel="noopener">View License</a><br>{% endif %}
+                            {% if queue.asset.licenseText %}<strong>License Text:</strong><br />{{ queue.asset.licenseText | nl2br }}{% endif %}
                         </td>
                     </tr>
             {% if loop.last %}
@@ -143,8 +143,8 @@
 <script src="{{ base_path() }}/js/home.js"></script>
 {% if pending %}
 <script>
-    {% for asset in pending|filter(v => v.change_requested == 1 and v.mime_type starts with 'image/') %}
-    previewImage(document.getElementById('preview_{{ asset.id }}'), '{{ url_for('view', {'bzid': asset.bzid, 'queueid': asset.id, width: 256, height: 256}) | escape('js') }}');
+    {% for queue in pending|filter(v => v.changeRequested == 1 and v.asset.mimeType starts with 'image/') %}
+    previewImage(document.getElementById('preview_{{ queue.asset.id }}'), '{{ url_for('view', {'bzid': queue.asset.bzid, 'queueid': queue.asset.id, width: 256, height: 256}) | escape('js') }}');
     {% endfor %}
 </script>
 {% endif %}

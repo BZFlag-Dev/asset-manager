@@ -23,8 +23,9 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Attribute\AuthRequirement;
-use App\Database\DatabaseInterface;
+use App\Entity\Queue;
 use App\Extra\SessionHelper;
+use Doctrine\ORM\EntityManager;
 use League\Config\Configuration;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -34,7 +35,7 @@ class AssetController
 {
   // We'll handle auth requirements inside the function
   #[AuthRequirement('none')]
-  public function view(ServerRequestInterface $request, ResponseInterface $response, Configuration $config, DatabaseInterface $db, SessionHelper $session, string $bzid, int $queueid, int $width = 0, int $height = 0): ResponseInterface
+  public function view(ServerRequestInterface $request, ResponseInterface $response, Configuration $config, EntityManager $entityManager, SessionHelper $session, string $bzid, int $queueid, int $width = 0, int $height = 0): ResponseInterface
   {
     // Require that a user is logged in and is either viewing their own assets or are an admin
     if (!$session->exists('username') || (!$session->get('is_admin', false) && $session->get('bzid') !== $bzid)) {
@@ -44,19 +45,30 @@ class AssetController
     }
 
     // Look up the entry in moderation queue
-    $asset = $db->queue_get_by_bzid_and_id($bzid, $queueid);
-    if ($asset === null) {
+    $queue = $entityManager->getRepository(Queue::class)
+      ->createQueryBuilder('q')
+      ->innerJoin('q.asset', 'a')
+      ->where('a.bzid = :bzid')
+      ->andWhere('a.id = :id')
+      ->setParameter('bzid', $bzid)
+      ->setParameter('id', $queueid)
+      ->getQuery()
+      ->getOneOrNullResult();
+
+    if ($queue === null) {
       $response->getBody()->write("404 Not Found");
       return $response
         ->withStatus(404);
     }
+
+    $asset = $queue->getAsset();
 
     // Clamp the maximum values
     $width = min($width, $config->get('asset.image.max_width'));
     $height = min($height, $config->get('asset.image.max_height'));
 
     // Store a reference to the full path of the file
-    $fullPath = $config->get('path.upload')."/{$asset['bzid']}_{$asset['filename']}";
+    $fullPath = $config->get('path.upload')."/{$asset->getBzid()}_{$asset->getFilename()}";
 
     // Verify that the file actually exists
     if (!file_exists($fullPath)) {
@@ -65,10 +77,10 @@ class AssetController
         ->withStatus(404);
     }
 
-    if (str_starts_with($asset['mime_type'], 'image/')) {
+    if (str_starts_with($asset->getMimeType(), 'image/')) {
       // If either the width or the height are 0 or less, just send the original file
       if ($width <= 0 || $height <= 0) {
-        $response = $response->withHeader('Content-Type', $asset['type']);
+        $response = $response->withHeader('Content-Type', $asset->getMimeType());
         $response->getBody()->write(file_get_contents($fullPath));
       } else {
         // Get information about the image file
@@ -94,7 +106,7 @@ class AssetController
 
         $thumbnail = imagecreatetruecolor($width, $height);
         try {
-          $image = match ($asset['mime_type']) {
+          $image = match ($asset->getMimeType()) {
             'image/png' => imagecreatefrompng($fullPath),
             'image/jpeg' => imagecreatefromjpeg($fullPath),
             'image/gif' => imagecreatefromgif($fullPath),

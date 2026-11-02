@@ -17,7 +17,7 @@
         "ext-fileinfo": "*",
         "ext-gd": "*",
         "ext-pdo": "*",
-        "ext-sqlite3": "*",
+        "ext-mysqli": "*",
         "slim/slim": "4.*",
         "nyholm/psr7": "^1.8",
         "nyholm/psr7-server": "^1.0",
@@ -28,7 +28,10 @@
         "composer/spdx-licenses": "^1.5",
         "phpmailer/phpmailer": "^6.8",
         "monolog/monolog": "^3.5",
-        "twbs/bootstrap": "^5.3"
+        "twbs/bootstrap": "^5.3",
+        "doctrine/orm": "^3.0",
+        "doctrine/dbal": "^4.0",
+        "symfony/cache": "^8.0"
     },
     "scripts": {
         "post-update-cmd": [

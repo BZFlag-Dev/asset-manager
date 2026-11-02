@@ -24,10 +24,14 @@ namespace App\Controller;
 
 use App\Attribute\AuthRequirement;
 use App\Attribute\JSONResponse;
-use App\Database\DatabaseInterface;
+use App\Entity\Asset;
+use App\Entity\Queue;
 use App\Extra\SessionHelper;
 use App\Extra\Utils;
 use Composer\Spdx\SpdxLicenses;
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\Exception\ORMException;
+use Doctrine\ORM\OptimisticLockException;
 use Exception;
 use InvalidArgumentException;
 use League\Config\Configuration;
@@ -43,14 +47,22 @@ use Slim\Views\Twig;
 class ManagementController
 {
   #[AuthRequirement('none')]
-  public function home(ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx, Configuration $config, SessionHelper $session): ResponseInterface
+  public function home(ResponseInterface $response, Twig $twig, EntityManager $entityManager, SpdxLicenses $spdx, Configuration $config, SessionHelper $session): ResponseInterface
   {
     $queue = null;
     $licenses = null;
     $upload_config = null;
 
     if ($session->exists('bzid')) {
-      $queue = $db->queue_get_by_bzid($session->get('bzid'));
+      $queue = $entityManager->getRepository(Queue::class)
+        ->createQueryBuilder('q')
+        ->innerJoin('q.asset', 'a')
+        ->where('a.bzid = :bzid')
+        ->setParameter('bzid', $session->get('bzid'))
+        ->getQuery()
+        ->getResult();
+      //header('Content-Type: application/json'); echo json_encode($queue); exit;
+      //header('Content-Type: text/html'); var_dump($queue); exit;
       $upload_config = $config->get('asset.upload');
       if ($queue) {
         $licenses = [
@@ -59,6 +71,7 @@ class ManagementController
           'other' => []
         ];
 
+        // TODO: Do I always need to do this, or only if any have changes requested?
         foreach ($spdx->getLicenses() as $license) {
           // If this license id is deprecated, skip it
           if ($license[3] === true) {
@@ -73,17 +86,6 @@ class ManagementController
           } // Otherwise, if it's an OSI-approved license, put it under Other
           elseif ($upload_config['licenses']['allow_other_osi'] && $license[2] === true) {
             $licenses['other'][$license[0]] = $license[1];
-          }
-        }
-
-        foreach ($queue as &$asset) {
-          // Figure out what license name to show on assets pending approval
-          if ($asset['change_requested'] === 0 && $asset['license_id'] !== 'Other') {
-            if ($spdx->validate($asset['license_id'])) {
-              $asset['license_name'] = $spdx->getLicenseByIdentifier($asset['license_id'])[0];
-            } else {
-              $asset['license_name'] = 'Unknown or invalid';
-            }
           }
         }
       }
@@ -144,9 +146,25 @@ class ManagementController
     return $errors;
   }
 
+  private function sendEmail(/*string $to, string $from, string $html_body, string $text_body, */Configuration $config, PHPMailer $mailer): void
+  {
+    if ($config->get('email.simulate')) {
+      if ($mailer->preSend()) {
+        $email_directory = dirname(__DIR__, 2).'/var/email/';
+        if (!is_dir($email_directory)) {
+          mkdir($email_directory);
+        }
+        $filename = date('Y-m-d_H-i-s') . '_' . bin2hex(random_bytes(4)) . '.eml';
+        file_put_contents($email_directory . $filename, $mailer->getSentMIMEMessage());
+      }
+    } else {
+      $mailer->send();
+    }
+  }
+
   #[AuthRequirement('user')]
   #[JSONResponse]
-  public function changes(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
+  public function changes(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
   {
     // Grab a copy of the form data
     $data = $request->getParsedBody();
@@ -158,28 +176,36 @@ class ManagementController
     $successful_files = 0;
 
     // Loop through
-    foreach ($data['assets'] as $id => $asset) {
+    foreach ($data['assets'] as $asset_id => $asset) {
       // Fetch the current information
-      $row = $db->queue_get_by_bzid_and_id($session->get('bzid'), (int)$id);
+      $queue = $entityManager->getRepository(Queue::class)
+        ->createQueryBuilder('q')
+        ->innerJoin('q.asset', 'a')
+        ->where('a.bzid = :bzid')
+        ->andWhere('a.id = :id')
+        ->setParameter('bzid', $session->get('bzid'))
+        ->setParameter('id', $asset_id)
+        ->getQuery()
+        ->getOneOrNullResult();
 
-      if ($row === null) {
-        $return['asset_errors'][$id][] = 'Could not locate this asset in the database';
+      if ($queue === null) {
+        $return['asset_errors'][$asset_id][] = 'Could not locate this asset in the database';
         continue;
       }
 
       // If changes aren't requested, skip this one
-      if ($row['change_requested'] !== 1) {
+      if (!$queue->isChangeRequested()) {
         continue;
       }
 
       // Check if there were any changes made
       $has_changes = (
-        $asset['author'] != $row['author'] ||
-        $asset['source_url'] != $row['source_url'] ||
-        $asset['license'] != $row['license_id'] ||
-        $asset['license_name'] != $row['license_name'] ||
-        $asset['license_url'] != $row['license_url'] ||
-        $asset['license_text'] != $row['license_text']
+        $asset['author'] != $queue->getAsset()->getApprovedBy() ||
+        $asset['source_url'] != $queue->getAsset()->getSourceUrl() ||
+        $asset['license'] != $queue->getAsset()->getLicenseId() ||
+        $asset['license_name'] != $queue->getAsset()->getLicenseName() ||
+        $asset['license_url'] != $queue->getAsset()->getLicenseUrl() ||
+        $asset['license_text'] != $queue->getAsset()->getLicenseText()
       );
 
       if ($has_changes) {
@@ -187,25 +213,36 @@ class ManagementController
 
         // If we had errors, add those
         if ($errors) {
-          $return['asset_errors'][$id] = $errors;
+          $return['asset_errors'][$asset_id] = $errors;
         }
         // Otherwise, update the queue item
         else {
           // NOTE: This doesn't pass $asset directly because a malicious user could include extra fields
-          $db->queue_update($id, [
-            'author' => $asset['author'],
-            'source_url' => $asset['source_url'],
-            'license_id' => $asset['license'],
-            'license_name' => $asset['license_name'],
-            'license_url' => $asset['license_url'],
-            'license_text' => $asset['license_text'],
-            'change_requested' => 0
-          ]);
+          $queue->getAsset()
+            ->setApprovedBy($asset['author'])
+            ->setSourceUrl($asset['source_url'])
+            ->setLicenseId($asset['license'])
+            ->setLicenseName($asset['license_name'])
+            ->setLicenseUrl($asset['license_url'])
+            ->setLicenseText($asset['license_text'])
+          ;
+          // TODO: Check if I have to call setAsset with the updated asset
+          $queue->setChangeRequested(false);
+          try {
+            // TODO: Check if I have to separately persist $asset
+            //$entityManager->persist($asset);
+            $entityManager->persist($queue);
+            $entityManager->flush();
+          } catch (ORMException $e) {
+            $logger->error("Failed to persist user changes to queue.", ['message' => $e->getMessage()]);
+            $return['asset_errors'][$asset_id][] = 'Unknown error.';
+            continue;
+          }
 
           $successful_files++;
         }
       } else {
-        $return['asset_errors'][$id][] = 'No changes were made.';
+        $return['asset_errors'][$asset_id][] = 'No changes were made.';
       }
     }
 
@@ -230,7 +267,7 @@ class ManagementController
 
         // Try to send the email
         try {
-          $mailer->send();
+          $this->sendEmail($config, $mailer);
         } catch (Exception) {
           $mailer->getSMTPInstance()->reset();
         }
@@ -423,7 +460,7 @@ class ManagementController
 
   #[AuthRequirement('user')]
   #[JSONResponse]
-  public function upload_process(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
+  public function upload_process(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
   {
     // Fetch the upload configuration options and clamp values to the PHP maximums
     $upload_config = $config->get('asset.upload');
@@ -574,6 +611,9 @@ class ManagementController
         continue;
       }
 
+      // TODO: Verify that a file doesn't already exist with this path/filename in the database (in case the file is
+      //   missing for some reason)
+
       // Verify the other form data exists for this file
       if (!isset($data['assets'][$index]) || !is_array($data['assets'][$index])) {
         $file_errors[$index][] = 'The asset information was not provided.';
@@ -601,26 +641,39 @@ class ManagementController
         }
 
         try {
-          $db->queue_add([
-            'bzid' => $session->get('bzid'),
-            'username' => $session->get('username'),
-            'email' => $data['uploader_email'],
-            'filename' => $filename,
-            'file_size' => $file_size,
-            'mime_type' => $mime_type,
-            'author' => $d['author'],
-            'source_url' => $d['source_url'],
-            'license_id' => $d['license'],
-            'license_name' => $d['license_name'],
-            'license_url' => $d['license_url'],
-            'license_text' => $d['license_text']
-          ]);
-        } catch (Exception) {
+          $asset = new Asset();
+          $asset
+            ->setPath($session->get('clean_username'))
+            ->setFilename($filename)
+            ->setBzid($session->get('bzid'))
+            ->setUsername($session->get('username'))
+            ->setFileSize($file_size)
+            ->setHashSha256(hash_file('sha256', $path_queue))
+            ->setMimeType($mime_type)
+            ->setAuthor($d['author'])
+            ->setSourceUrl($d['source_url'])
+            ->setLicenseId($d['license'])
+            ->setLicenseName($d['license_name'])
+            ->setLicenseUrl($d['license_url'])
+            ->setLicenseText($d['license_text'])
+          ;
+          $entityManager->persist($asset);
+          $entityManager->flush();
+
+          $queue = new Queue();
+          $queue
+            ->setAsset($asset)
+            ->setEmail($data['uploader_email'])
+          ;
+          $entityManager->persist($queue);
+          $entityManager->flush();
+        } catch (Exception|ORMException $e) {
           $logger->critical("A database error occurred while adding file to the queue", [
             'bzid' => $session->get('bzid'),
             'username' => $session->get('username'),
             'filename' => $filename,
             'file_size' => $file_size,
+            'message' => $e->getMessage(),
           ]);
           // TODO: Delete the file that was moved
           $file_errors[$index][] = 'A database error occurred while adding the file to the queue.';
@@ -654,7 +707,7 @@ class ManagementController
 
         // Try to send the email
         try {
-          $mailer->send();
+          $this->sendEmail($config, $mailer);
         } catch (Exception) {
           $mailer->getSMTPInstance()->reset();
         }
@@ -683,14 +736,15 @@ class ManagementController
   }
 
   #[AuthRequirement('admin')]
-  public function queue(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, DatabaseInterface $db, SpdxLicenses $spdx): ResponseInterface
+  public function queue(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, EntityManager $entityManager, SpdxLicenses $spdx): ResponseInterface
   {
     // TODO: Pagination?
 
     // Get all the items in the queue
-    $queue = $db->queue_get();
+    $pending = $entityManager->getRepository(Queue::class)->findAll();
 
-    foreach ($queue as &$asset) {
+    // TODO: Replace this with some twig function?
+    /*foreach ($queue as &$asset) {
       if ($asset['license_id'] !== 'Other') {
         if ($spdx->validate($asset['license_id'])) {
           $asset['license_name'] = $spdx->getLicenseByIdentifier($asset['license_id'])[0];
@@ -698,16 +752,16 @@ class ManagementController
           $asset['license_name'] = 'Unknown or invalid';
         }
       }
-    }
+    }*/
 
     return $twig->render($response, 'queue.html.twig', [
-      'queue' => $queue
+      'pending' => $pending
     ]);
   }
 
   #[AuthRequirement('admin')]
   #[JSONResponse]
-  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
+  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
   {
     $data = $request->getParsedBody();
 
@@ -725,22 +779,20 @@ class ManagementController
         }
 
         // Fetch this queue entry
-        $queue = $db->queue_get_by_id($id);
+        $queue = $entityManager->getRepository(Queue::class)->find($id);
 
-        if (!$queue) {
+        if ($queue === null) {
           continue;
         }
 
+        // Store a reference to the asset
+        $asset = $queue->getAsset();
+
         if ($review['action'] === 'approve') {
           // Paths
-          $path_queue = $config->get('path.upload') . "/{$queue['bzid']}_{$queue['filename']}";
-          $path_clean_dir = Utils::clean_username($queue['username']);
-          if (strlen($path_clean_dir) === 0) {
-            $file_errors[$id][] = 'The destination directory name is blank.';
-            continue;
-          }
-          $path_final_dir = $config->get('path.files') . "/$path_clean_dir";
-          $path_final = "$path_final_dir/{$queue['filename']}";
+          $path_queue = $config->get('path.upload') . "/{$asset->getBzid()}_{$asset->getFilename()}";
+          $path_final_dir = $config->get('path.files') . "/{$asset->getPath()}";
+          $path_final = "$path_final_dir/{$asset->getFilename()}";
 
           // Verify the temporary file exists
           if (!file_exists($path_queue)) {
@@ -772,48 +824,46 @@ class ManagementController
           }
 
           // Calculate and compare the SHA256 hash
-          $hash_256_temp = hash_file('sha256', $path_queue);
+          // TODO: Since we now calculate the sha256 when uploading, we only really need to compare that to the final
+          //   path.
+          /*$hash_256_temp = hash_file('sha256', $path_queue);
           $hash_256_final = hash_file('sha256', $path_final);
           if ($hash_256_temp === false || $hash_256_final === false || $hash_256_final !== $hash_256_temp) {
             $file_errors[$id][] = 'Failed to calculate file hash or file hash mismatch between temporary and final file.';
             unlink($path_final);
             continue;
-          }
+          }*/
 
-          // Add the approved asset to the database
-          if ($db->asset_add([
-            'path' => $path_clean_dir,
-            'bzid' => $queue['bzid'],
-            'username' => $queue['username'],
-            'filename' => $queue['filename'],
-            'file_size' => $queue['file_size'],
-            'mime_type' => $queue['mime_type'],
-            'author' => $queue['author'],
-            'source_url' => $queue['source_url'],
-            'license_id' => $queue['license_id'],
-            'license_name' => $queue['license_name'],
-            'license_url' => $queue['license_url'],
-            'license_text' => $queue['license_text'],
-            'hash_sha256' => $hash_256_final,
-            'approved_by' => $session->get('username')
-          ]) === null) {
-            $file_errors[$id][] = 'Failed to add asset entry.';
+          // Approve the asset
+          try {
+            $asset
+              ->setApprovedBy($session->get('username'))
+              ->setApprovedAtToNow()
+            ;
+            $entityManager->persist($asset);
+            $entityManager->flush();
+          } catch (OptimisticLockException|ORMException $e) {
+            $file_errors[$id][] = 'Failed to approve the asset.';
+            // If something went wrong, delete the final file
             unlink($path_final);
             continue;
           }
 
-          // Remove it from the database
-          if (!$db->queue_remove($queue['id'])) {
-            $file_errors[$id][] = 'Failed to remove queue entry.';
+          // Delete the queue entry
+          try {
+            $entityManager->remove($queue);
+            $entityManager->flush();
+          } catch (OptimisticLockException|ORMException $e) {
+            $file_errors[$id][] = 'Failed to remove the asset from the queue.';
             continue;
           }
 
           // Remove the temporary file
           unlink($path_queue);
 
-          $notifications[$queue['email']]['approved'][] = [
-            'filename' => $queue['filename'],
-            'final_url' => "$base_url/$path_clean_dir/{$queue['filename']}"
+          $notifications[$queue->getEmail()]['approved'][] = [
+            'filename' => $asset->getFilename(),
+            'final_url' => "$base_url/{$asset->getPath()}/{$asset->getFilename()}"
           ];
 
         } elseif ($review['action'] === 'request' || $review['action'] === 'reject') {
@@ -824,31 +874,46 @@ class ManagementController
           }
 
           if ($review['action'] === 'request') {
-            $db->queue_update($queue['id'], [
-              'details' => $review['details'],
-              'change_requested' => 1
-            ]);
+            try {
+              $queue
+                ->setDetails($review['details'])
+                ->setChangeRequested(true)
+              ;
+              $entityManager->persist($queue);
+              $entityManager->flush();
+            } catch (OptimisticLockException|ORMException $e) {
+              $file_errors[$id][] = 'Failed to request a review of the asset.';
+              continue;
+            }
 
-            $notifications[$queue['email']]['change_requested'][] = [
-              'filename' => $queue['filename'],
+            $notifications[$queue->getEmail()]['change_requested'][] = [
+              'filename' => $asset->getFilename(),
               'details' => $review['details']
             ];
           } else {
             // Delete the temporary file
-            unlink($config->get('path.upload') . "/{$queue['bzid']}_{$queue['filename']}");
+            unlink($config->get('path.upload') . "/{$asset->getBzid()}_{$asset->getFilename()}");
 
             // Remove the entry from the database
-            $db->queue_remove($queue['id']);
+            try {
+              $entityManager->remove($queue);
+              $entityManager->flush();
+              $entityManager->remove($asset);
+              $entityManager->flush();
+            } catch (OptimisticLockException|ORMException $e) {
+              $file_errors[$id][] = 'Failed to reject the asset.';
+              continue;
+            }
 
-            $notifications[$queue['email']]['rejected'][] = [
-              'filename' => $queue['filename'],
+            $notifications[$queue->getEmail()]['rejected'][] = [
+              'filename' => $asset->getFilename(),
               'details' => $review['details']
             ];
           }
         }
 
         // Add it to the list of successful files
-        $successful_files[] = $queue['id'];
+        $successful_files[] = $asset->getId();
       }
     }
 
@@ -868,7 +933,7 @@ class ManagementController
 
       // Try to send the email
       try {
-        $mailer->send();
+        $this->sendEmail($config, $mailer);
       } catch (Exception) {
         // TODO: Log the failure
         $mailer->getSMTPInstance()->reset();

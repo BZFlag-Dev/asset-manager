@@ -2,6 +2,7 @@
 
 Your uploaded assets have been reviewed.
 
+{% if approved is defined %}
 {% for review in approved %}
 {% if loop.first %}
 -----------------------------------------------------------------------------
@@ -9,10 +10,12 @@ Your uploaded assets have been reviewed.
 Approved: The following items were approved and are ready for use.
 
 {% endif %}
-{{ review.filename | raw }}
-{{ review.final_url | raw }}
+Filename: {{ review.filename | raw }}
+Requested changes: {{ review.final_url | raw }}
 
 {% endfor %}
+{% endif %}
+{% if change_requested is defined %}
 {% for review in change_requested %}
 {% if loop.first %}
 -----------------------------------------------------------------------------
@@ -20,10 +23,12 @@ Approved: The following items were approved and are ready for use.
 Changes Requested: Changes were requested for the following items.
 
 {% endif %}
-{{ review.filename | raw }}
-{{ review.details | raw }}
+Filename: {{ review.filename | raw }}
+Requested changes: {{ review.details | raw }}
 
 {% endfor %}
+{% endif %}
+{% if rejected is defined %}
 {% for review in rejected %}
 {% if loop.first %}
 -----------------------------------------------------------------------------
@@ -31,7 +36,8 @@ Changes Requested: Changes were requested for the following items.
 Rejected: The following items were rejected and have been deleted.
 
 {% endif %}
-{{ review.filename | raw }}
-{{ review.details | raw }}
+Filename: {{ review.filename | raw }}
+Requested changes: {{ review.details | raw }}
 
 {% endfor %}
+{% endif %}

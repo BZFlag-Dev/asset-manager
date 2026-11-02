@@ -5,22 +5,22 @@
 {% set page_title = 'Queue' %}
 
 {% block content %}
-        {% for asset in queue|filter(v => v.change_requested == 0) %}
+        {% for queue in pending|filter(v => v.changeRequested == 0) %}
             {% if loop.first %}
     <form action="{{ url_for('queue') }}" id="queue">
             {% endif %}
-        <div class="mb-3 pb-3 asset" id="file_{{ asset.id }}">
+        <div class="mb-3 pb-3 asset" id="file_{{ queue.asset.id }}">
             <div class="row mb-3">
                 <div class="col me-3 position-relative file-info">
                     <h3>File Information</h3>
-                    <canvas class="file-preview position-absolute" width="512" height="512" id="preview_{{ asset.id }}"></canvas>
+                    <canvas class="file-preview position-absolute" width="512" height="512" id="preview_{{ queue.asset.id }}"></canvas>
                     <div class="file-metadata">
                         <p>
                             <strong>Filename:</strong><br>
-                            <span class="file-name font-monospace bg-dark-subtle p-1">{{ asset.filename | escape }}</span>
+                            <span class="file-name font-monospace bg-dark-subtle p-1">{{ queue.asset.filename | escape }}</span>
                         </p>
                         <p>
-                            <strong>File size:</strong> {{ bytesToSize(asset.file_size) }}
+                            <strong>File size:</strong> {{ bytesToSize(queue.asset.fileSize) }}
                         </p>
                     </div>
                 </div>
@@ -28,12 +28,12 @@
                     <h3>Source Information</h3>
                     <p>
                         <strong>Author Name:</strong><br>
-                        <span>{{ asset.author | escape }}</span>
+                        <span>{{ queue.asset.author | escape }}</span>
                     </p>
-                    {% if asset.source_url %}
+                    {% if queue.asset.sourceUrl %}
                     <p>
                         <strong>Source URL:</strong><br>
-                        <span><a href="{{ asset.source_url | escape('html_attr') }}">{{ asset.source_url | escape }}</a></span>
+                        <span><a href="{{ queue.asset.sourceUrl | escape('html_attr') }}">{{ queue.asset.sourceUrl | escape }}</a></span>
                     </p>
                     {% endif %}
                 </div>
@@ -41,11 +41,11 @@
                     <h3>Uploader Information</h3>
                     <p>
                         <strong>Uploader:</strong><br>
-                        {{ asset.username }} ({{ asset.bzid }})
+                        {{ queue.asset.username }} ({{ queue.asset.bzid }})
                     </p>
                 </div>
             </div>
-            <div class="row d-none asset-error" id="file_errors_{{ asset.id }}">
+            <div class="row d-none asset-error" id="file_errors_{{ queue.asset.id }}">
                 <div class="col text-danger-emphasis">
                     <strong>Errors:</strong><br>
                     <ul></ul>
@@ -56,29 +56,29 @@
                     <h3>License Information</h3>
                     <p>
                         <strong>License Name:</strong><br>
-                        <span>{% if asset.license_id == 'Other' %}Other - {% endif %}{{ asset.license_name | escape }}</span>
+                        <span>{{ queue.asset.licenseDisplayName | escape }}</span>
                     <p>
 
-                    {% if asset.license_url %}
+                    {% if queue.asset.licenseUrl %}
                     <p>
                         <strong>License URL:</strong><br>
-                        <span><a href="{{ asset.license_url | escape('html_attr') }}" target="_blank" rel="noreferrer">{{ asset.license_url | escape }}</a></span>
+                        <span><a href="{{ queue.asset.licenseUrl | escape('html_attr') }}" target="_blank" rel="noreferrer">{{ queue.asset.licenseUrl | escape }}</a></span>
                     </p>
                     {% endif %}
-                    {% if asset.license_text %}
+                    {% if queue.asset.licenseText %}
                     <p>
                         <strong>License Text:</strong><br>
-                        <code><pre class="pre-wrap">{{ asset.license_text | escape}}</pre></code>
+                        <code><pre class="pre-wrap">{{ queue.asset.licenseText | escape}}</pre></code>
                     </p>
                     {% endif %}
                 </div>
             </div>
 
-            {% if asset.details %}
+            {% if queue.details %}
             <div class="row mb-3 ms-3 border-start border-4 border-danger">
                 <div class="col">
                     <h3>Changes Requested</h3>
-                    {{ asset.details|escape|nl2br }}
+                    {{ queue.details|escape|nl2br }}
                 </div>
             </div>
             {% endif %}
@@ -86,27 +86,27 @@
             <div class="row">
                 <div class="col">
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input review-action" type="radio" name="review[{{ asset.id }}][action]" id="review_{{ asset.id }}_nothing" value="" checked>
-                        <label class="form-check-label" for="review_{{ asset.id }}_nothing">Do Nothing</label>
+                        <input class="form-check-input review-action" type="radio" name="review[{{ queue.asset.id }}][action]" id="review_{{ queue.asset.id }}_nothing" value="" checked>
+                        <label class="form-check-label" for="review_{{ queue.asset.id }}_nothing">Do Nothing</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input review-action" type="radio" name="review[{{ asset.id }}][action]" id="review_{{ asset.id }}_approve" value="approve">
-                        <label class="form-check-label text-success-emphasis" for="review_{{ asset.id }}_approve"><strong>Approve</strong></label>
+                        <input class="form-check-input review-action" type="radio" name="review[{{ queue.asset.id }}][action]" id="review_{{ queue.asset.id }}_approve" value="approve">
+                        <label class="form-check-label text-success-emphasis" for="review_{{ queue.asset.id }}_approve"><strong>Approve</strong></label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input review-action" type="radio" name="review[{{ asset.id }}][action]" id="review_{{ asset.id }}_request" value="request">
-                        <label class="form-check-label text-warning" for="review_{{ asset.id }}_request">Request Changes</label>
+                        <input class="form-check-input review-action" type="radio" name="review[{{ queue.asset.id }}][action]" id="review_{{ queue.asset.id }}_request" value="request">
+                        <label class="form-check-label text-warning" for="review_{{ queue.asset.id }}_request">Request Changes</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input review-action" type="radio" name="review[{{ asset.id }}][action]" id="review_{{ asset.id }}_reject" value="reject">
-                        <label class="form-check-label text-danger-emphasis" for="review_{{ asset.id }}_reject">Reject</label>
+                        <input class="form-check-input review-action" type="radio" name="review[{{ queue.asset.id }}][action]" id="review_{{ queue.asset.id }}_reject" value="reject">
+                        <label class="form-check-label text-danger-emphasis" for="review_{{ queue.asset.id }}_reject">Reject</label>
                     </div>
                 </div>
             </div>
             <div class="row d-none review-details mt-3">
                 <div class="col">
-                    <label class="form-label" for="review_{{ asset.id }}_details">Request/Rejection Details:</label>
-                    <textarea class="form-control" id="review_{{ asset.id }}_details" name="review[{{ asset.id }}][details]" rows="8"></textarea>
+                    <label class="form-label" for="review_{{ queue.asset.id }}_details">Request/Rejection Details:</label>
+                    <textarea class="form-control" id="review_{{ queue.asset.id }}_details" name="review[{{ queue.asset.id }}][details]" rows="8">{{ queue.details|escape|nl2br }}</textarea>
                 </div>
             </div>
 
@@ -129,10 +129,8 @@
 <script src="{{ base_path() }}/js/util.js"></script>
 <script src="{{ base_path() }}/js/queue.js"></script>
 <script>
-{% for asset in queue|filter(v => v.change_requested == 0) %}
-    {% if asset.mime_type starts with 'image/' %}
-    previewImage(document.getElementById('preview_{{ asset.id }}'), '{{ url_for('view', {'bzid': asset.bzid, 'queueid': asset.id, width: 256, height: 256}) | escape('js') }}');
-    {% endif %}
+{% for queue in pending|filter(v => v.changeRequested == 0 and v.asset.mimeType starts with 'image/') %}
+    previewImage(document.getElementById('preview_{{ queue.asset.id }}'), '{{ url_for('view', {'bzid': queue.asset.bzid, 'queueid': queue.asset.id, width: 256, height: 256}) | escape('js') }}');
 {% endfor %}
 </script>
 {% endblock %}

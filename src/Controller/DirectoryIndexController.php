@@ -22,9 +22,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Database\DatabaseInterface;
+use App\Entity\Asset;
 use Composer\Spdx\SpdxLicenses;
 use DirectoryIterator;
+use Doctrine\ORM\EntityManager;
 use League\Config\Configuration;
 use Psr\Http\Message\ResponseInterface;
 use Slim\App;
@@ -32,14 +33,13 @@ use Slim\Views\Twig;
 
 class DirectoryIndexController
 {
-  public function generate(App $app, ResponseInterface $response, Twig $twig, Configuration $config, DatabaseInterface $db, SpdxLicenses $spdx, string $path): ResponseInterface
+  public function generate(App $app, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, string $path): ResponseInterface
   {
     // Trim the trailing slash off the path
     $path = trim($path, '/');
 
     $directories = [];
     $assets = [];
-    $data = $db->asset_get_by_path($path);
 
     // Iterate through the contents of this path and enumerate directories
     $iter = new DirectoryIterator("{$config->get('path.files')}/$path");
@@ -58,27 +58,41 @@ class DirectoryIndexController
 
       // Is this a directory?
       if ($info->isDir()) {
-        $directories[] = [
-          'path' => "$filename/",
-          'name' => $filename
-        ];
+        $directories[] = $filename;
       } elseif ($info->isFile()) {
-        if (isset($data[$filename])) {
-          $assets[] = $data[$filename];
-        } else {
-          $assets[] = [
-            'filename' => $filename,
-            'file_size' => $info->getSize(),
-            'author' => '(Unknown)',
-            'license_name' => '(Unknown)'
-          ];
-        }
+        $assets[$filename] = [
+          'file_size' => $info->getSize(),
+        ];
+      }
+    }
+
+    $data = $entityManager->getRepository(Asset::class)
+      ->createQueryBuilder('a')
+      ->where('a.path = :path')
+      ->andWhere('a.approved_at IS NOT NULL')
+      ->setParameter('path', $path)
+      ->getQuery()
+      ->getResult();
+
+    foreach ($data as $asset) {
+      if (array_key_exists($asset->getFilename(), $assets)) {
+        $assets[$asset->getFilename()] = array_merge(
+          $assets[$asset->getFilename()],
+          [
+            'username' => $asset->getUsername(),
+            'author' => $asset->getAuthor(),
+            'license_id' => $asset->getLicenseId(),
+            'license_name' => $asset->getLicenseDisplayName(),
+            'license_url' => $asset->getLicenseUrl(),
+            'license_text' => $asset->getLicenseText(),
+          ]
+        );
       }
     }
 
     // Sort the directories and assets
-    uasort($directories, fn ($a, $b) => strcmp($a['path'], $b['path']));
-    uasort($assets, fn ($a, $b) => strcmp($a['filename'], $b['filename']));
+    sort($directories);
+    ksort($assets);
 
     return $twig->render($response, 'directory_index.html.twig', [
       'path' => $path,

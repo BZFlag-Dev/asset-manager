@@ -14,16 +14,19 @@ Feature Progress
 * [X] Email notifications
   * [ ] Moderation queue reminders
 * [X] Directory index for listing assets
+* [ ] Write out static index.html files for directory indexes
+* [ ] Conversion script to migrate from the old site
 
 Requirements
 ------------
-* PHP 8.2 or later (ideally the FPM variant), with the following extensions:
+* PHP 8.4 or later (ideally the FPM variant), with the following extensions:
   * PDO
   * cURL
   * FileInfo
   * GD
   * PDO
-  * SQLite3
+  * MySQL
+* MariaDB
 * [Composer](https://getcomposer.org/download/)
 
 Installation
@@ -40,6 +43,11 @@ A configuration file named ```config.php``` will need to be created and would be
 ```php
 <?php
 return [
+  'database' => [
+    'database' => 'assets',
+    'username' => 'assets',
+    'password' => 'PutPasswordHere'
+  ],
   'site' => [
     'takedown_address' => 'dmca@domain.test'
   ],
@@ -71,6 +79,37 @@ Create a symbolic link to directory_index.php inside ```/var/www/assets/public``
 ```shell
 ln -s /var/www/asset-manager/directory_index.php /var/www/assets/public/index.php
 ```
+
+Database Setup
+--------------
+
+This assumes the asset-manager database is 'assets', the asset-manager user is 'assets', and another migration account
+is called 'assets_migration'. Adjust the below to match your environment.
+
+```mysql
+GRANT SELECT, INSERT, UPDATE, DELETE ON assets.* TO assets@localhost;
+GRANT SELECT, INSERT, UPDATE, DELETE, ALTER, CREATE, DROP ON assets.* TO assets_migration@localhost;
+```
+
+Create a `phinx-config.php`:
+```php
+<?php
+return [
+  'database' => [
+    'database' => 'assets',
+    'username' => 'assets_migration',
+    'password' => 'PutPasswordHere'
+  ]
+];
+```
+
+Run the migration:
+```bash
+php tools/vendor/bin/phinx migrate
+```
+
+Webserver Configuration
+-----------------------
 
 Create a web server configuration, such as something like this for Apache:
 ```apacheconf

@@ -1,6 +1,10 @@
 <?php
 
-use App\Database\DatabaseInterface;
+use Doctrine\DBAL\DriverManager;
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\Mapping\Driver\AttributeDriver;
+use Doctrine\ORM\ORMSetup;
+use Doctrine\ORM\Configuration as DoctrineConfiguration;
 use League\Config\Configuration;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -8,13 +12,20 @@ use Nette\Schema\Expect;
 use PHPMailer\PHPMailer\PHPMailer;
 use Slim\Views\Twig;
 use App\Extra\SessionHelper;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\Adapter\PhpFilesAdapter;
 
 return [
   Configuration::class => function () {
     // Define config schema
     $config = new Configuration([
       'database' => Expect::structure([
-        'path' => Expect::string(dirname(__DIR__).'/var/data/db.sqlite3')
+        'host' => Expect::string('127.0.0.1'),
+        'port' => Expect::int(3306),
+        'database' => Expect::string()->required(),
+        'username' => Expect::string()->required(),
+        'password' => Expect::string()->required(),
       ]),
       'site' => Expect::structure([
         // The name of the game that these assets are being hosted for
@@ -71,14 +82,16 @@ return [
         // When a new asset is uploaded for moderation, all emails here will
         // be notified.
         'notify_addresses' => Expect::listOf(Expect::email())->required(),
-
+        // SMTP server settings
         'smtp' => Expect::structure([
           'host' => Expect::string('localhost'),
           'port' => Expect::int(25)->min(1)->max(65535),
           'username' => Expect::string(''),
           'password' => Expect::string(''),
           'encryption' => Expect::anyOf('null', 'ssl', 'tls')->default('null')
-        ])
+        ]),
+        // If true, don't actually send the email, and instead just write to files
+        'simulate' => Expect::bool(false)
       ]),
       'session' => Expect::structure([
         'lifetime' => Expect::anyOf(Expect::string(), Expect::int()->min(0))->default('2 hours'),
@@ -109,8 +122,41 @@ return [
     return $config;
   },
 
-  DatabaseInterface::class => function (Configuration $config, Logger $logger) {
-    return new \App\Database\SQLite3($config, $logger);
+  EntityManager::class => function(Configuration $config) {
+    // Set up a metadata configuration
+    $metadata_configuration = ORMSetup::createAttributeMetadataConfig(
+      [
+        dirname(__DIR__) . '/src/Entity'
+      ],
+      $config->get('debug')
+    );
+
+    // In dev mode, just use some in-memory caching, but for production write to disk
+    if ($config->get('debug')) {
+      $queryCache = new ArrayAdapter();
+      $metadataCache = new ArrayAdapter();
+    } else {
+      $queryCache = new PhpFilesAdapter(namespace: 'doctrine_queries', directory: dirname(__DIR__).'/var/cache');
+      $metadataCache = new PhpFilesAdapter(namespace: 'doctrine_metadata', directory: dirname(__DIR__).'/var/cache');
+    }
+
+    $metadata_configuration->setMetadataCache($metadataCache);
+    $metadata_configuration->setQueryCache($queryCache);
+
+    // Use lazy loading, supported in PHP 8.4+
+    $metadata_configuration->enableNativeLazyObjects(true);
+
+    $connection = DriverManager::getConnection([
+      'driver' => 'pdo_mysql',
+      'host' => $config->get('database.host'),
+      'port' => $config->get('database.port'),
+      'dbname' => $config->get('database.database'),
+      'user' => $config->get('database.username'),
+      'password' => $config->get('database.password'),
+      'charset' => 'utf8',
+    ]);
+
+    return new EntityManager($connection, $metadata_configuration);
   },
 
   SessionHelper::class => function (Configuration $config, Logger $logger) {
@@ -121,14 +167,15 @@ return [
     $twig = Twig::create(dirname(__DIR__).'/views', [
       'cache' => dirname(__DIR__).'/var/cache/twig',
       'auto_reload' => true,
-      'use_yield' => true
+      'use_yield' => true,
+      'strict_variables' => true,
     ]);
 
     // Get the Twig environment so we can add some global variables
     $env = $twig->getEnvironment();
 
     // If there is a session, pass some vars onto Twig
-    if ($session->exists('username')) {
+    if (!defined('IN_DIRECTORY_INDEX') && $session->exists('username')) {
       $env->addGlobal('username', $session->get('username'));
       $env->addGlobal('bzid', $session->get('bzid'));
       $env->addGlobal('is_admin', $session->get('is_admin', false));

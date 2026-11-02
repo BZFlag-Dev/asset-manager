@@ -29,6 +29,8 @@ use Slim\Views\TwigMiddleware;
 
 require __DIR__ . '/vendor/autoload.php';
 
+const IN_DIRECTORY_INDEX = true;
+
 $builder = new \DI\ContainerBuilder();
 $builder->addDefinitions(dirname(__FILE__).'/src/di-config.php');
 $container = $builder->build();

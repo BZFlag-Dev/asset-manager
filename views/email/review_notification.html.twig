@@ -5,6 +5,7 @@
 
 <p>Your uploaded assets have been reviewed.</p>
 
+{% if approved is defined %}
 {% for review in approved %}
 {% if loop.first %}
     <h2>Approved</h2>
@@ -20,7 +21,9 @@
     </div>
 {% endif %}
 {% endfor %}
+{% endif %}
 
+{% if change_requested is defined %}
 {% for review in change_requested %}
     {% if loop.first %}
     <h2>Changes Requested</h2>
@@ -36,7 +39,9 @@
     </div>
     {% endif %}
 {% endfor %}
+{% endif %}
 
+{% if rejected is defined %}
 {% for review in rejected %}
     {% if loop.first %}
     <h2>Rejected</h2>
@@ -52,5 +57,6 @@
     </div>
     {% endif %}
 {% endfor %}
+{% endif %}
 </body>
 </html>
