@@ -20,7 +20,7 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace App\Extra;
+namespace App\Service;
 
 use League\Config\Configuration;
 use Monolog\Logger;

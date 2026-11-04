@@ -14,7 +14,7 @@ Feature Progress
 * [X] Email notifications
   * [ ] Moderation queue reminders
 * [X] Directory index for listing assets
-* [ ] Write out static index.html files for directory indexes
+* [X] Write out static index.html files for directory indexes
 * [ ] Conversion script to migrate from the old site
 
 Requirements
@@ -35,7 +35,9 @@ This assumes that the website will be stored in ```/var/www/asset-manager```, wh
 ```shell
 git clone https://github.com/BZFlag-Dev/asset-manager /var/www/asset-manager
 cd /var/www/asset-manager
-composer install
+composer install --no-dev -o
+composer -d tools install --no-dev
+mkdir -p /var/www/assets/public
 ```
 The final location of approved assets would be elsewhere, such as ```/var/www/assets/public```.
 
@@ -73,11 +75,6 @@ return [
     ]
   ]
 ];
-```
-
-Create a symbolic link to directory_index.php inside ```/var/www/assets/public```:
-```shell
-ln -s /var/www/asset-manager/directory_index.php /var/www/assets/public/index.php
 ```
 
 Database Setup
@@ -119,7 +116,7 @@ Create a web server configuration, such as something like this for Apache:
         DocumentRoot /var/www/assets/public
         <Directory /var/www/assets/public>
                 Require all granted
-                DirectoryIndex /index.php
+                DirectoryIndex index.html
         </Directory>
 
 

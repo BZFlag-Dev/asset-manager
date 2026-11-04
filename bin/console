@@ -1,0 +1,17 @@
+#!/usr/bin/env php
+<?php
+
+use App\Command\IndexRebuildCommand;
+use Symfony\Component\Console\Application;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$builder = new \DI\ContainerBuilder();
+$builder->addDefinitions(dirname(__DIR__).'/src/di-config.php');
+$container = $builder->build();
+
+$app = new Application('bzflag-asset-manager', '1.0.0');
+$app->addCommands([
+    $container->get(IndexRebuildCommand::class)
+]);
+$app->run();

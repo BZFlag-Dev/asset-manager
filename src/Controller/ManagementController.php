@@ -26,8 +26,9 @@ use App\Attribute\AuthRequirement;
 use App\Attribute\JSONResponse;
 use App\Entity\Asset;
 use App\Entity\Queue;
-use App\Extra\SessionHelper;
 use App\Extra\Utils;
+use App\Service\DirectoryIndexGenerator;
+use App\Service\SessionHelper;
 use Composer\Spdx\SpdxLicenses;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Exception\ORMException;
@@ -761,7 +762,7 @@ class ManagementController
 
   #[AuthRequirement('admin')]
   #[JSONResponse]
-  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
+  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session, DirectoryIndexGenerator $indexGenerator): ResponseInterface
   {
     $data = $request->getParsedBody();
 
@@ -809,7 +810,10 @@ class ManagementController
           // Create the final directory if it doesn't exist
           if (!is_dir($path_final_dir)) {
             if (!file_exists($path_final_dir)) {
-              mkdir($path_final_dir);
+              if (!mkdir($path_final_dir) || !$indexGenerator->writeIndex('')) {
+                $file_errors[$id][] = 'Failed to create the final directory or write the index file.';
+                continue;
+              }
             } // Else, it might exist as a file or link, so bail
             else {
               $file_errors[$id][] = 'File or link exists at the final directory.';
@@ -860,6 +864,11 @@ class ManagementController
 
           // Remove the temporary file
           unlink($path_queue);
+
+          // Write the new index file where the file was placed
+          if (!$indexGenerator->writeIndex($asset->getPath())) {
+            $logger->error('Failed to write the index file in the final directory.', ['path' => $path_final_dir]);
+          }
 
           $notifications[$queue->getEmail()]['approved'][] = [
             'filename' => $asset->getFilename(),

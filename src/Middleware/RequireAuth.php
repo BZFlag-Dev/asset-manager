@@ -22,7 +22,7 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
-use App\Extra\SessionHelper;
+use App\Service\SessionHelper;
 use League\Config\Configuration;
 use Nyholm\Psr7\Response;
 use Psr\Http\Message\ServerRequestInterface as Request;

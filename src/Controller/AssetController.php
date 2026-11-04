@@ -24,7 +24,7 @@ namespace App\Controller;
 
 use App\Attribute\AuthRequirement;
 use App\Entity\Queue;
-use App\Extra\SessionHelper;
+use App\Service\SessionHelper;
 use Doctrine\ORM\EntityManager;
 use League\Config\Configuration;
 use Psr\Http\Message\ResponseInterface;

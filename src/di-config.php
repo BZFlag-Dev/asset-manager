@@ -2,18 +2,15 @@
 
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManager;
-use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 use Doctrine\ORM\ORMSetup;
-use Doctrine\ORM\Configuration as DoctrineConfiguration;
 use League\Config\Configuration;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Nette\Schema\Expect;
 use PHPMailer\PHPMailer\PHPMailer;
 use Slim\Views\Twig;
-use App\Extra\SessionHelper;
+use App\Service\SessionHelper;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\PhpFilesAdapter;
 
 return [
@@ -175,7 +172,7 @@ return [
     $env = $twig->getEnvironment();
 
     // If there is a session, pass some vars onto Twig
-    if (!defined('IN_DIRECTORY_INDEX') && $session->exists('username')) {
+    if (php_sapi_name() != 'cli' && $session->exists('username')) {
       $env->addGlobal('username', $session->get('username'));
       $env->addGlobal('bzid', $session->get('bzid'));
       $env->addGlobal('is_admin', $session->get('is_admin', false));

@@ -22,8 +22,8 @@ declare(strict_types=1);
 
 use App\Controller\AssetController;
 use App\Controller\ManagementController;
-use App\Extra\SessionHelper;
 use App\Middleware\RequireAuth;
+use App\Service\SessionHelper;
 use DI\Bridge\Slim\Bridge;
 use League\Config\Configuration;
 use Monolog\Logger;
