@@ -228,7 +228,7 @@ class ManagementController
         else {
           // NOTE: This doesn't pass $asset directly because a malicious user could include extra fields
           $queue->getAsset()
-            ->setApprovedBy($asset['author'])
+            ->setAuthor($asset['author'])
             ->setSourceUrl($asset['source_url'])
             ->setLicenseId($asset['license'])
             ->setLicenseName($asset['license_name'])
