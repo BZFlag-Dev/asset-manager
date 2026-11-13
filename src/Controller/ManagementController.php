@@ -142,11 +142,19 @@ class ManagementController
       ) {
         $errors[] = 'An invalid license was selected.';
       }
+
+      // Also verify that the license name, URL, and text have NOT been provided, since those are only available when
+      // the "Other Approved License" is selected. This prevents the skipping of validation, which is particularly
+      // important for the license URL, which could have allowed for XSS.
+      if (v::notEmpty()->validate($asset['license_name']) || v::notEmpty()->validate($asset['license_url']) || v::notEmpty()->validate($asset['license_text'])) {
+        $errors[] = 'The license name, URL, or text was provided when the license was not set to Other.';
+      }
     }
 
     return $errors;
   }
 
+  // TODO: Extend PHPMailer with this functionality?
   private function sendEmail(/*string $to, string $from, string $html_body, string $text_body, */Configuration $config, PHPMailer $mailer): void
   {
     if ($config->get('email.simulate')) {

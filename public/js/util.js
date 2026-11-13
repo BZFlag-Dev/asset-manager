@@ -62,10 +62,20 @@ function updateLicense(ev) {
     if (ev.target.tagName !== 'SELECT')
         return;
 
+    // Grab a reference to the container for this upload
+    const thisUpload = ev.target.closest('.upload');
+
     // Loop through all the custom license elements in for this file
-    ev.target.closest('.upload').querySelectorAll('.custom-license').forEach((el) => {
+    thisUpload.querySelectorAll('.custom-license').forEach((el) => {
         el.classList.toggle('d-none', ev.target.value !== 'Other');
     });
+
+    // Clear the license name, URL, and text if the license is not set to Other
+    if (ev.target.value !== 'Other') {
+        thisUpload.querySelector('.license-name').value = '';
+        thisUpload.querySelector('.license-url').value = '';
+        thisUpload.querySelector('.license-text').value = '';
+    }
 
     // Also validate the license
     validateLicense(ev);
