@@ -687,8 +687,9 @@ class ManagementController
             'file_size' => $file_size,
             'message' => $e->getMessage(),
           ]);
-          // TODO: Delete the file that was moved
+          unlink($path_queue);
           $file_errors[$index][] = 'A database error occurred while adding the file to the queue.';
+          continue;
         }
 
         // If we had no errors, delete the empty array
