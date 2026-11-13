@@ -6,7 +6,7 @@ document.querySelectorAll('.upload').forEach((el) => {
 });
 
 const changes_form = document.getElementById('changes');
-changes_form.addEventListener('submit', async (ev) => {
+changes_form?.addEventListener('submit', async (ev) => {
     // Prevent the form from submitting normally
     ev.preventDefault();
 
