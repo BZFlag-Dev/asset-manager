@@ -209,7 +209,7 @@ class ManagementController
 
       // Check if there were any changes made
       $has_changes = (
-        $asset['author'] != $queue->getAsset()->getApprovedBy() ||
+        $asset['author'] != $queue->getAsset()->getAuthor() ||
         $asset['source_url'] != $queue->getAsset()->getSourceUrl() ||
         $asset['license'] != $queue->getAsset()->getLicenseId() ||
         $asset['license_name'] != $queue->getAsset()->getLicenseName() ||
