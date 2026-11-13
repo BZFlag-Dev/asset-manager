@@ -76,10 +76,6 @@ class SessionHelper
       'samesite' => 'Strict'
     ];
 
-    // Adjust some INI settings for the session
-    ini_set('session.use_trans_sid', '0');
-    ini_set('session.gc_maxlifetime', $lifetime);
-
     // Set the session save path to a subdirectory
     $session_dir = session_save_path().DIRECTORY_SEPARATOR.self::SESSION_NAME;
     if (!is_dir($session_dir)) {
@@ -99,7 +95,15 @@ class SessionHelper
     }
 
     // Finally, start the session
-    session_start();
+    session_start([
+      'use_strict_mode' => true,
+      'use_trans_sid' => 0,
+      'gc_maxlifetime' => $lifetime,
+    ]);
+  }
+
+  public function regenerate_id(): void {
+    session_regenerate_id(true);
   }
 
   public function exists($key): bool

@@ -392,6 +392,9 @@ class ManagementController
       ]);
     }
 
+    // Regenerate the session ID
+    $session->regenerate_id();
+
     // Store the user-agent so that we can compare later for session validation
     $session->set('user_agent', $_SERVER['HTTP_USER_AGENT']);
 
