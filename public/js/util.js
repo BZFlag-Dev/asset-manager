@@ -137,21 +137,13 @@ function fancyJoin(values) {
         return '';
     }
 
-    if (values.length === 0)
-        return '';
-    else if (values.length === 1)
-        return values[0];
-    else if (values.length === 2)
-        return values[0] + " and " + values[1];
-    else {
-        let return_value = '';
-        const last = values.length - 1;
-        for (let index = 0; index < values.length; index++) {
-            if (index === last)
-                return_value += ` and ${values[index]}`;
-            else
-                return_value += `, ${values[index]}`;
-        }
-    }
+    // Cast all the values to String just to be safe
+    const items = values.map(String);
 
+    // If we have 1 or 0 items, return just the item or an empty string, respectively
+    if (items.length <= 1) return items[0] ?? '';
+
+    // Otherwise, pop the last value off, join the rest, and append the last with an 'and'
+    const last = items.pop();
+    return `${items.join(', ')} and ${last}`;
 }
