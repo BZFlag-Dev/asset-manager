@@ -102,7 +102,8 @@ class SessionHelper
     ]);
   }
 
-  public function regenerate_id(): void {
+  public function regenerate_id(): void
+  {
     session_regenerate_id(true);
   }
 

@@ -25,6 +25,7 @@ namespace App\Middleware;
 use Nyholm\Psr7\Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
+
 class SecurityHeaders
 {
   public function __invoke(Request $request, RequestHandler $handler): Response
