@@ -23,6 +23,7 @@ declare(strict_types=1);
 use App\Controller\AssetController;
 use App\Controller\ManagementController;
 use App\Middleware\RequireAuth;
+use App\Middleware\SecurityHeaders;
 use App\Service\SessionHelper;
 use DI\Bridge\Slim\Bridge;
 use League\Config\Configuration;
@@ -60,6 +61,7 @@ $errorMiddleware = $app->addErrorMiddleware(
 );
 
 $app->add(RequireAuth::class);
+$app->add(SecurityHeaders::class);
 
 // The RoutingMiddleware should be added after our RequireAuth middleware so routing is performed first
 $app->addRoutingMiddleware();
