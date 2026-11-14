@@ -8,6 +8,8 @@
         {% for queue in pending|filter(v => v.changeRequested == 0) %}
             {% if loop.first %}
     <form action="{{ url_for('queue') }}" id="queue">
+        <input type="hidden" name="{{ csrf.name_key }}" value="{{ csrf.name }}">
+        <input type="hidden" name="{{ csrf.value_key }}" value="{{ csrf.value }}">
             {% endif %}
         <div class="mb-3 pb-3 asset" id="file_{{ queue.asset.id }}">
             <div class="row mb-3">

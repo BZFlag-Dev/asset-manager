@@ -15,6 +15,8 @@
         {% for queue in pending|filter(v => v.changeRequested == 1) %}
             {% if loop.first %}
                 <form action="{{ url_for('submit_changes') }}" id="changes" class="hide-other-licenses">
+                <input type="hidden" name="{{ csrf.name_key }}" value="{{ csrf.name }}">
+                <input type="hidden" name="{{ csrf.value_key }}" value="{{ csrf.value }}">
                 <div class="my-3">Changes have been requested for the following uploads:</div>
             {% endif %}
                     <div class="upload mb-3 pb-3 border-bottom">

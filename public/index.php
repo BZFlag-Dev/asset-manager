@@ -28,6 +28,7 @@ use App\Service\SessionHelper;
 use DI\Bridge\Slim\Bridge;
 use League\Config\Configuration;
 use Monolog\Logger;
+use Slim\Csrf\Guard;
 use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
 
@@ -62,6 +63,7 @@ $errorMiddleware = $app->addErrorMiddleware(
 
 $app->add(RequireAuth::class);
 $app->add(SecurityHeaders::class);
+$app->add(Guard::class);
 
 // The RoutingMiddleware should be added after our RequireAuth middleware so routing is performed first
 $app->addRoutingMiddleware();

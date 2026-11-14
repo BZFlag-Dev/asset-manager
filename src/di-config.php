@@ -8,6 +8,8 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Nette\Schema\Expect;
 use PHPMailer\PHPMailer\PHPMailer;
+use Slim\App;
+use Slim\Csrf\Guard;
 use Slim\Views\Twig;
 use App\Service\SessionHelper;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
@@ -158,6 +160,19 @@ return [
 
   SessionHelper::class => function (Configuration $config, Logger $logger) {
     return new SessionHelper($config, $logger);
+  },
+
+  Guard::class => function (App $app, Twig $twig, SessionHelper $session): Guard {
+    $csrf = new Guard(
+      responseFactory: $app->getResponseFactory(),
+      storage: $session,
+      persistentTokenMode: true
+    );
+
+    // Add Twig extension for the CSRF token
+    $twig->getEnvironment()->addExtension(new \App\View\CsrfExtension($csrf));
+
+    return $csrf;
   },
 
   Twig::class => function (Configuration $config, SessionHelper $session) {

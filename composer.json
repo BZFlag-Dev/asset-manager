@@ -33,7 +33,8 @@
         "doctrine/dbal": "^4.0",
         "symfony/cache": "^8.0",
         "symfony/console": "^8.1",
-        "symfony/finder": "^8.1"
+        "symfony/finder": "^8.1",
+        "slim/csrf": "^1.5"
     },
     "scripts": {
         "post-update-cmd": [

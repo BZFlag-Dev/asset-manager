@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3f6accf472bb26c176ec05b88460ec32",
+    "content-hash": "9a8666c20de1b346d12b6b6bd7d41a80",
     "packages": [
         {
             "name": "composer/spdx-licenses",
@@ -2257,6 +2257,62 @@
                 "source": "https://github.com/Respect/Validation/tree/2.5.0"
             },
             "time": "2026-07-22T15:21:03+00:00"
+        },
+        {
+            "name": "slim/csrf",
+            "version": "1.5.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/slimphp/Slim-Csrf.git",
+                "reference": "a476a61e38451e138c400f6b4ca96037f3c2dd39"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/slimphp/Slim-Csrf/zipball/a476a61e38451e138c400f6b4ca96037f3c2dd39",
+                "reference": "a476a61e38451e138c400f6b4ca96037f3c2dd39",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4 || ^8.0",
+                "psr/http-factory": "^1.1",
+                "psr/http-message": "^1.0 || ^2.0",
+                "psr/http-server-handler": "^1.0",
+                "psr/http-server-middleware": "^1.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.6",
+                "squizlabs/php_codesniffer": "^3.10"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Slim\\Csrf\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Josh Lockhart",
+                    "email": "hello@joshlockhart.com",
+                    "homepage": "http://joshlockhart.com"
+                }
+            ],
+            "description": "Slim Framework 4 CSRF protection PSR-15 middleware",
+            "homepage": "https://www.slimframework.com",
+            "keywords": [
+                "csrf",
+                "framework",
+                "middleware",
+                "slim"
+            ],
+            "support": {
+                "issues": "https://github.com/slimphp/Slim-Csrf/issues",
+                "source": "https://github.com/slimphp/Slim-Csrf/tree/1.5.1"
+            },
+            "time": "2025-11-02T14:58:28+00:00"
         },
         {
             "name": "slim/slim",
