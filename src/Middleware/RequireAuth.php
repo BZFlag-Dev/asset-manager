@@ -83,7 +83,7 @@ class RequireAuth
       // TODO: Should we bother with a max duration?
 
       // Check if the user agent changed
-      $this->session->get('user_agent', '') === $_SERVER['HTTP_USER_AGENT']
+      $this->session->get('user_agent', '') === ($_SERVER['HTTP_USER_AGENT'] ?? '')
     ;
 
     // If the session is not valid, check if the user can view this page
