@@ -30,6 +30,6 @@ class SecurityHeaders
   public function __invoke(Request $request, RequestHandler $handler): Response
   {
     return $handler->handle($request)
-      ->withHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; img-src 'self' data:");
+      ->withHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:");
   }
 }
