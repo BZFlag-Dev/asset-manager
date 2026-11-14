@@ -116,7 +116,7 @@ class AssetController
         } catch (UnhandledMatchError) {
           $response->getBody()->write('415 Unsupported Image Type');
           return $response
-            ->withStatus(500);
+            ->withStatus(415);
         }
 
         imagealphablending($thumbnail, false);
