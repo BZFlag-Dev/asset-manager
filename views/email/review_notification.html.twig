@@ -14,7 +14,7 @@
 {% endif %}
         <p>
             <strong>{{ review.filename | escape }}</strong><br>
-            <a href="{{ review.final_url | escape('html_attr') }}" target="_blank">{{ review.final_url | escape }}</a>
+            Final URL: <a href="{{ review.final_url | escape('html_attr') }}" target="_blank">{{ review.final_url | escape }}</a>
         </p>
 
 {% if loop.last %}
@@ -32,6 +32,7 @@
     {% endif %}
         <p>
             <strong>{{ review.filename | escape }}</strong><br>
+            Requested changes:<br>
             {{ review.details | escape | nl2br }}
         </p>
 
@@ -50,6 +51,7 @@
     {% endif %}
         <p>
             <strong>{{ review.filename | escape }}</strong><br>
+            Reason:<br>
             {{ review.details | escape | nl2br }}
         </p>
 

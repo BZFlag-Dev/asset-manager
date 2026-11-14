@@ -11,7 +11,7 @@ Approved: The following items were approved and are ready for use.
 
 {% endif %}
 Filename: {{ review.filename | raw }}
-Requested changes: {{ review.final_url | raw }}
+Final URL: {{ review.final_url | raw }}
 
 {% endfor %}
 {% endif %}
@@ -24,7 +24,8 @@ Changes Requested: Changes were requested for the following items.
 
 {% endif %}
 Filename: {{ review.filename | raw }}
-Requested changes: {{ review.details | raw }}
+Requested changes:
+{{ review.details | raw }}
 
 {% endfor %}
 {% endif %}
@@ -37,7 +38,8 @@ Rejected: The following items were rejected and have been deleted.
 
 {% endif %}
 Filename: {{ review.filename | raw }}
-Requested changes: {{ review.details | raw }}
+Reason:
+{{ review.details | raw }}
 
 {% endfor %}
 {% endif %}
