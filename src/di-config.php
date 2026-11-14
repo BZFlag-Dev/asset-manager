@@ -162,10 +162,9 @@ return [
     return new SessionHelper($config, $logger);
   },
 
-  Guard::class => function (App $app, Twig $twig, SessionHelper $session): Guard {
+  Guard::class => function (App $app, Twig $twig): Guard {
     $csrf = new Guard(
       responseFactory: $app->getResponseFactory(),
-      storage: $session,
       persistentTokenMode: true
     );
 
