@@ -64,8 +64,8 @@ class AssetController
     $asset = $queue->getAsset();
 
     // Clamp the maximum values
-    $width = min($width, $config->get('asset.image.max_width'));
-    $height = min($height, $config->get('asset.image.max_height'));
+    $width = min($width, 256);
+    $height = min($height, 256);
 
     // Store a reference to the full path of the file
     $fullPath = $config->get('path.upload')."/{$asset->getBzid()}_{$asset->getFilename()}";
