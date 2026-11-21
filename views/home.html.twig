@@ -123,7 +123,7 @@
                             <strong>Filename:</strong> {{ queue.asset.filename }}<br>
                             <strong>Author Name:</strong> {{ queue.asset.author }}<br>
                             <strong>License:</strong> {{ queue.asset.licenseDisplayName }}<br>
-                            {% if queue.asset.licenseUrl %}<strong>License URL:</strong> <a href="{{ queue.asset.licenseUrl }}" target="_blank" rel="noopener">View License</a><br>{% endif %}
+                            {% if queue.asset.licenseUrl %}<strong>License URL:</strong> <a href="{{ queue.asset.licenseUrl | escape('html_attr') }}" target="_blank" rel="noopener">View License</a><br>{% endif %}
                             {% if queue.asset.licenseText %}<strong>License Text:</strong><br />{{ queue.asset.licenseText | nl2br }}{% endif %}
                         </td>
                     </tr>
