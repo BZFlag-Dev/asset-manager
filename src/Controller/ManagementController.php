@@ -62,8 +62,7 @@ class ManagementController
         ->setParameter('bzid', $session->get('bzid'))
         ->getQuery()
         ->getResult();
-      //header('Content-Type: application/json'); echo json_encode($queue); exit;
-      //header('Content-Type: text/html'); var_dump($queue); exit;
+
       $upload_config = $config->get('asset.upload');
       if ($queue) {
         $licenses = [
