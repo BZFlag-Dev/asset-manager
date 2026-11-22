@@ -127,7 +127,7 @@ class ManagementController
       }
 
       // Verify either the license URL or text are provided
-      if (!(v::optional(v::startsWith('http')->startsWith('http')->url()))->validate($asset['license_url'])) {
+      if (!(v::optional(v::startsWith('http')->url()))->validate($asset['license_url'])) {
         $errors[] = 'The license URL was not a valid URL.';
       } elseif (!(v::notEmpty()->validate($asset['license_url']) || v::notEmpty()->validate($asset['license_text']))) {
         $errors[] = 'The license URL or text was not provided. One or both must be provided when "Other Approved Licensed" is selected.';
