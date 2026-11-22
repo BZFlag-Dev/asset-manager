@@ -40,9 +40,11 @@ readonly class DirectoryIndexGenerator
 
   public function writeIndex(string $path): bool
   {
-    // Trim the trailing slash off the path
-    $path = trim($path, '/');
-    $fullPath = "{$this->config->get('path.files')}/$path";
+    // Trim the trailing slash off the path, and ensure we have a leading slash
+    if ($path !== '') {
+      $path = '/' . trim($path, '/');
+    }
+    $fullPath = "{$this->config->get('path.files')}$path";
 
     // Create some variables to hold information about directories and files
     $directories = [];
