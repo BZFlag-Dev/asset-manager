@@ -240,7 +240,7 @@ class ManagementController
 
     // If one or more files were successful, send a notification
     if ($successful_files > 0) {
-      // Send a notification to all of the moderators
+      // Send a notification to all the moderators
       $mailer->sendEmail(
         recipients: $config->get('email.notify_addresses'),
         subject: sprintf("%s %s - Uploaded Assets", $config->get('site.game_name'), $config->get('site.title')),
