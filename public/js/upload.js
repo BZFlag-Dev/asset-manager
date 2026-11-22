@@ -1,19 +1,10 @@
 function bytesToSize(bytes) {
-    const kilobyte = 1024;
-    const megabyte = kilobyte * 1024;
-    const gigabyte = megabyte * 1024;
-    const terabyte = gigabyte * 1024;
+    const UNITS = ['B', 'KiB', 'MiB', 'GiB'];
+    const BASE = 1024;
+    if (bytes === 0) return '0 B';
 
-    if (bytes < kilobyte)
-        return bytes + ' B';
-    else if (bytes < megabyte)
-        return (bytes / kilobyte).toFixed(1) + ' KiB';
-    else if (bytes < gigabyte)
-        return (bytes / megabyte).toFixed(1) + ' MiB';
-    else if (bytes < terabyte)
-        return (bytes / gigabyte).toFixed(1) + ' GiB';
-    else
-        return (bytes / terabyte).toFixed(1) + ' TiB';
+    let i = Math.min(Math.floor(Math.log(bytes) / Math.log(BASE)), UNITS.length - 1);
+    return (bytes / BASE ** i).toFixed(i === 0 ? 0 : 1) + ' ' + UNITS[i];
 }
 
 function removeFile(upload_container) {

@@ -27,17 +27,14 @@ class Utils
   // Convert the various byte units used in php.ini to bytes
   public static function convertToBytes(string $size): int
   {
-    if (str_ends_with($size, 'G')) {
-      return (int)$size * 1024 * 1024 * 1024;
-    } elseif (str_ends_with($size, 'M')) {
-      return (int)$size * 1024 * 1024;
-    } elseif (str_ends_with($size, 'K')) {
-      return (int)$size * 1024;
-    } else {
-      return (int)$size;
-    }
+    $size = trim($size);
+    return (int)$size * match (strtolower(substr($size, -1))) {
+      'g' => 1024 ** 3,
+      'm' => 1024 ** 2,
+      'k' => 1024,
+      default => 1
+    };
   }
-
 
   // Clean the username for use in filesystem operations
   public static function clean_username(string $username): string
