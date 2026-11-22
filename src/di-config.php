@@ -152,7 +152,8 @@ return [
       'dbname' => $config->get('database.database'),
       'user' => $config->get('database.username'),
       'password' => $config->get('database.password'),
-      'charset' => 'utf8',
+      'charset' => 'utf8mb4',
+      'collation' => 'utf8mb4_unicode_ci',
     ]);
 
     return new EntityManager($connection, $metadata_configuration);

@@ -51,7 +51,8 @@ return
       'user' => $config->get('database.username'),
       'pass' => $config->get('database.password'),
       'port' => $config->get('database.port'),
-      'charset' => 'utf8',
+      'charset' => 'utf8mb4',
+      'collation' => 'utf8mb4_unicode_ci',
     ],
   ],
   'version_order' => 'creation'
