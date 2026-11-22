@@ -698,17 +698,6 @@ class ManagementController
     // Fetch up to 50 items from the queue, oldest first
     $pending = $entityManager->getRepository(Queue::class)->findBy(['change_requested' => 0], ['created_at' => 'ASC'], 50);
 
-    // TODO: Replace this with some twig function?
-    /*foreach ($queue as &$asset) {
-      if ($asset['license_id'] !== 'Other') {
-        if ($spdx->validate($asset['license_id'])) {
-          $asset['license_name'] = $spdx->getLicenseByIdentifier($asset['license_id'])[0];
-        } else {
-          $asset['license_name'] = 'Unknown or invalid';
-        }
-      }
-    }*/
-
     return $twig->render($response, 'queue.html.twig', [
       'pending' => $pending
     ]);

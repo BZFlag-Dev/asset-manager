@@ -215,23 +215,23 @@ class Asset
 
   public function getLicenseDisplayName(): ?string
   {
-    // Initialize the SPDX licenses the first time we use this
-    if ($this->spdx === null) {
-      $this->spdx = new SpdxLicenses();
-    }
-
     // If this asset has a custom license name, just return that
     if (!empty($this->license_name)) {
       return 'Other - ' . $this->license_name;
     }
-    // If not, but it has a valid license ID, return that license name
-    elseif ($this->spdx->validate($this->getLicenseId())) {
+
+    // Initialize the SPDX licenses the first time we need them
+    if ($this->spdx === null) {
+      $this->spdx = new SpdxLicenses();
+    }
+
+    // If it has a valid license ID, return that license name
+    if ($this->spdx->validate($this->getLicenseId())) {
       return $this->spdx->getLicenseByIdentifier($this->getLicenseId())[0];
     }
+
     // We don't know what the license is
-    else {
-      return 'Unknown or invalid';
-    }
+    return 'Unknown license';
   }
 
   public function getLicenseUrl(): ?string
