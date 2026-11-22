@@ -15,7 +15,7 @@
             <div class="row mb-3">
                 <div class="col me-3 position-relative file-info">
                     <h3>File Information</h3>
-                    <canvas class="file-preview position-absolute" width="512" height="512" id="preview_{{ queue.asset.id }}"></canvas>
+                    <canvas class="file-preview position-absolute" width="512" height="512" id="preview_{{ queue.asset.id }}" data-mime-type="{{ queue.asset.mimeType|escape('html_attr') }}" data-preview-url="{{ url_for('view', {'bzid': queue.asset.bzid, 'queueid': queue.asset.id, width: 256, height: 256})|escape('html_attr') }}"></canvas>
                     <div class="file-metadata">
                         <p>
                             <strong>Filename:</strong><br>
@@ -130,9 +130,4 @@
 {% block scripts %}
 <script src="{{ base_path() }}/js/util.js"></script>
 <script src="{{ base_path() }}/js/queue.js"></script>
-<script>
-{% for queue in pending|filter(v => v.changeRequested == 0 and v.asset.mimeType starts with 'image/') %}
-    previewImage(document.getElementById('preview_{{ queue.asset.id }}'), '{{ url_for('view', {'bzid': queue.asset.bzid, 'queueid': queue.asset.id, width: 256, height: 256}) | escape('js') }}');
-{% endfor %}
-</script>
 {% endblock %}

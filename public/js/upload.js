@@ -26,6 +26,7 @@ function removeFile(upload_container) {
     upload_container.parentNode.removeChild(upload_container);
 }
 
+const upload_config = JSON.parse(document.getElementById('upload_config').textContent);
 const container = document.getElementById('file_list');
 const template = document.getElementById('file_template');
 const upload_form = document.getElementById('uploads');
@@ -46,16 +47,16 @@ function updateTotals() {
 
     // Update the display of the total files
     total_files_span.innerHTML = total_files;
-    total_files_progress.style.width = Math.min(100, total_files / max_file_count * 100)+'%';
-    if (total_files > max_file_count)
+    total_files_progress.style.width = Math.min(100, total_files / upload_config.max_file_count * 100)+'%';
+    if (total_files > upload_config.max_file_count)
         total_files_progress.classList.add('bg-danger');
     else
         total_files_progress.classList.remove('bg-danger');
 
     // Update the display of the total file size
     total_size_span.innerHTML = bytesToSize(total_bytes);
-    total_size_progress.style.width = Math.min(100, total_bytes / max_post_size * 100)+'%';
-    if (total_bytes > max_post_size)
+    total_size_progress.style.width = Math.min(100, total_bytes / upload_config.max_post_size * 100)+'%';
+    if (total_bytes > upload_config.max_post_size)
         total_size_progress.classList.add('bg-danger');
     else
         total_size_progress.classList.remove('bg-danger');
@@ -80,7 +81,7 @@ new_files.addEventListener('change', function(ev) {
         let errors = []
         for (const file of ev.target.files) {
             // Check if the file exceeds the maximum file size
-            if (file.size > max_file_size) {
+            if (file.size > upload_config.max_file_size) {
                 errors.push("%FILENAME% exceeds the maximum file size.".replace('%FILENAME%', file.name));
                 continue;
             }
@@ -162,13 +163,13 @@ upload_form.addEventListener('submit', async (ev) => {
         return;
     }
     // Verify we don't have too many files
-    else if (total_files > max_file_count) {
+    else if (total_files > upload_config.max_file_count) {
         showDialog('Error', 'Too many files provided.');
         return;
     }
 
     // Check if we've exceeded the maximum POST size
-    if (total_bytes > max_post_size) {
+    if (total_bytes > upload_config.max_post_size) {
         showDialog('Error', 'The provided files exceed maximum total size.')
         return;
     }

@@ -1,3 +1,9 @@
+document.querySelectorAll('.file-preview').forEach(el => {
+    if (el.dataset.mimeType.startsWith('image/')) {
+        previewImage(el, el.dataset.previewUrl);
+    }
+});
+
 document.querySelectorAll('.review-action').forEach((el) => {
     el.addEventListener('change', (ev) => {
         // Sanity check to make sure we're operating on the radio input

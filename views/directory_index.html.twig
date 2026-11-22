@@ -95,12 +95,6 @@
 </div>
 
 <script src="{{ base_path }}/js/bootstrap.bundle.min.js"></script>
-<script>
-    document.querySelectorAll('.expand').forEach((el) => {
-        el.addEventListener('click', (ev) => {
-            document.querySelector('tr[data-index="' + ev.target.dataset['index'] + '"]').classList.toggle('d-none');
-        });
-    });
-</script>
+<script src="{{ base_path }}/js/directory.js"></script>
 </body>
 </html>

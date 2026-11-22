@@ -3,6 +3,10 @@ document.querySelectorAll('.upload').forEach((el) => {
     el.querySelector('.license-name').addEventListener('change', validateLicense);
     el.querySelector('.license-url').addEventListener('change', validateLicense);
     el.querySelector('.license-text').addEventListener('change', validateLicense);
+    const preview = el.querySelector('.file-preview');
+    if (preview && preview.dataset.mimeType.startsWith('image/')) {
+        previewImage(preview, preview.dataset.previewUrl);
+    }
 });
 
 const changes_form = document.getElementById('changes');
