@@ -22,11 +22,11 @@
                         <a class="nav-link{% if is_current_url('home') %} active" aria-current="page{% endif %}" href="{{ url_for('home') }}">Home</a>
                     </li>
 
-                    {% if username is defined %}
+                    {% if session.username is defined %}
                     <li class="nav-item">
                         <a class="nav-link{% if is_current_url('upload') %} active" aria-current="page{% endif %}" href="{{ url_for('upload') }}">Upload</a>
                     </li>
-                    {% if is_admin %}
+                    {% if session.is_admin %}
                     <li class="nav-item">
                         <a class="nav-link{% if is_current_url('queue') %} active" aria-current="page{% endif %}" href="{{ url_for('queue') }}">Queue</a>
                     </li>

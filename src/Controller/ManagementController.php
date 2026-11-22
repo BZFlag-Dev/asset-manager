@@ -361,11 +361,7 @@ class ManagementController
     // Store the user-agent so that we can compare later for session validation
     $session->set('user_agent', $_SERVER['HTTP_USER_AGENT']);
 
-    return $twig->render($response, 'login.html.twig', [
-      'username' => $session->get('username'),
-      'bzid' => $session->get('bzid'),
-      'is_admin' => $session->get('is_admin', false)
-    ]);
+    return $twig->render($response, 'login.html.twig');
   }
 
   #[AuthRequirement('none')]

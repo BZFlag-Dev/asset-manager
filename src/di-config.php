@@ -187,10 +187,8 @@ return [
     $env = $twig->getEnvironment();
 
     // If there is a session, pass some vars onto Twig
-    if (php_sapi_name() != 'cli' && $session->exists('username')) {
-      $env->addGlobal('username', $session->get('username'));
-      $env->addGlobal('bzid', $session->get('bzid'));
-      $env->addGlobal('is_admin', $session->get('is_admin', false));
+    if (php_sapi_name() != 'cli') {
+      $env->addGlobal('session', $session);
     }
 
     // Add some other globals
