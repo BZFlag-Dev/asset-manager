@@ -28,6 +28,7 @@ use App\Entity\Asset;
 use App\Entity\Queue;
 use App\Extra\Utils;
 use App\Service\DirectoryIndexGenerator;
+use App\Service\Mailer;
 use App\Service\SessionHelper;
 use Composer\Spdx\SpdxLicenses;
 use Doctrine\ORM\EntityManager;
@@ -37,7 +38,6 @@ use Exception;
 use InvalidArgumentException;
 use League\Config\Configuration;
 use Monolog\Logger;
-use PHPMailer\PHPMailer\PHPMailer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Respect\Validation\Validator as v;
@@ -153,26 +153,9 @@ class ManagementController
     return $errors;
   }
 
-  // TODO: Extend PHPMailer with this functionality?
-  private function sendEmail(/*string $to, string $from, string $html_body, string $text_body, */Configuration $config, PHPMailer $mailer): void
-  {
-    if ($config->get('email.simulate')) {
-      if ($mailer->preSend()) {
-        $email_directory = dirname(__DIR__, 2).'/var/email/';
-        if (!is_dir($email_directory)) {
-          mkdir($email_directory);
-        }
-        $filename = date('Y-m-d_H-i-s') . '_' . bin2hex(random_bytes(4)) . '.eml';
-        file_put_contents($email_directory . $filename, $mailer->getSentMIMEMessage());
-      }
-    } else {
-      $mailer->send();
-    }
-  }
-
   #[AuthRequirement('user')]
   #[JSONResponse]
-  public function changes(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
+  public function changes(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, Mailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
   {
     // Grab a copy of the form data
     $data = $request->getParsedBody();
@@ -258,31 +241,13 @@ class ManagementController
 
     // If one or more files were successful, send a notification
     if ($successful_files > 0) {
-      // Each email will use the same subject/message
-      $mailer->Subject = sprintf("%s %s - Uploaded Assets", $config->get('site.game_name'), $config->get('site.title'));
-      $mailer->msgHTML($twig->fetch('email/queue_notification.html.twig'));
-      $mailer->AltBody = $twig->fetch('email/queue_notification.text.twig');
-
-      foreach ($config->get('email.notify_addresses') as $email_address) {
-        try {
-          $mailer->addAddress($email_address);
-        } catch (Exception) {
-          $logger->error('Invalid notification email address', [
-            'address' => $email_address
-          ]);
-          continue;
-        }
-
-        // Try to send the email
-        try {
-          $this->sendEmail($config, $mailer);
-        } catch (Exception) {
-          $mailer->getSMTPInstance()->reset();
-        }
-
-        // Clear the address list
-        $mailer->clearAddresses();
-      }
+      // Send a notification to all of the moderators
+      $mailer->sendEmail(
+        recipients: $config->get('email.notify_addresses'),
+        subject: sprintf("%s %s - Uploaded Assets", $config->get('site.game_name'), $config->get('site.title')),
+        html_body: $twig->fetch('email/queue_notification.html.twig'),
+        text_body: $twig->fetch('email/queue_notification.text.twig')
+      );
     }
 
     $response->getBody()->write(json_encode($return));
@@ -471,7 +436,7 @@ class ManagementController
 
   #[AuthRequirement('user')]
   #[JSONResponse]
-  public function upload_process(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
+  public function upload_process(ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, Mailer $mailer, Logger $logger, SessionHelper $session): ResponseInterface
   {
     // Fetch the upload configuration options and clamp values to the PHP maximums
     $upload_config = $config->get('asset.upload');
@@ -702,31 +667,13 @@ class ManagementController
 
     // If one or more files were successful, send a notification
     if ($successful_files > 0) {
-      // Each email will use the same subject/message
-      $mailer->Subject = sprintf("%s %s - Uploaded Assets", $config->get('site.game_name'), $config->get('site.title'));
-      $mailer->msgHTML($twig->fetch('email/queue_notification.html.twig'));
-      $mailer->AltBody = $twig->fetch('email/queue_notification.text.twig');
-
-      foreach ($config->get('email.notify_addresses') as $email_address) {
-        try {
-          $mailer->addAddress($email_address);
-        } catch (Exception) {
-          $logger->error('Invalid notification email address', [
-            'address' => $email_address
-          ]);
-          continue;
-        }
-
-        // Try to send the email
-        try {
-          $this->sendEmail($config, $mailer);
-        } catch (Exception) {
-          $mailer->getSMTPInstance()->reset();
-        }
-
-        // Clear the address list
-        $mailer->clearAddresses();
-      }
+      // Send a notification to all the moderators
+      $mailer->sendEmail(
+        recipients: $config->get('email.notify_addresses'),
+        subject: sprintf("%s %s - Uploaded Assets", $config->get('site.game_name'), $config->get('site.title')),
+        html_body: $twig->fetch('email/queue_notification.html.twig'),
+        text_body: $twig->fetch('email/queue_notification.text.twig')
+      );
     }
 
     // If we had any errors, return them to the user
@@ -773,7 +720,7 @@ class ManagementController
 
   #[AuthRequirement('admin')]
   #[JSONResponse]
-  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, PHPMailer $mailer, Logger $logger, SessionHelper $session, DirectoryIndexGenerator $indexGenerator): ResponseInterface
+  public function queue_process(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, Configuration $config, EntityManager $entityManager, SpdxLicenses $spdx, Mailer $mailer, Logger $logger, SessionHelper $session, DirectoryIndexGenerator $indexGenerator): ResponseInterface
   {
     $data = $request->getParsedBody();
 
@@ -938,29 +885,13 @@ class ManagementController
     }
 
     // Send notification emails
-    $mailer->Subject = sprintf("%s %s - Reviewed Assets", $config->get('site.game_name'), $config->get('site.title'));
     foreach ($notifications as $email_address => $reviews) {
-      try {
-        $mailer->addAddress($email_address);
-      } catch (Exception) {
-        $logger->error('Invalid user email address', [
-          'address' => $email_address
-        ]);
-        continue;
-      }
-      $mailer->msgHTML($twig->fetch('email/review_notification.html.twig', $reviews));
-      $mailer->AltBody = $twig->fetch('email/review_notification.text.twig', $reviews);
-
-      // Try to send the email
-      try {
-        $this->sendEmail($config, $mailer);
-      } catch (Exception) {
-        // TODO: Log the failure
-        $mailer->getSMTPInstance()->reset();
-      }
-
-      // Clear the address list
-      $mailer->clearAddresses();
+      $mailer->sendEmail(
+        recipients: $email_address,
+        subject: sprintf("%s %s - Reviewed Assets", $config->get('site.game_name'), $config->get('site.title')),
+        html_body: $twig->fetch('email/review_notification.html.twig', $reviews),
+        text_body: $twig->fetch('email/review_notification.text.twig', $reviews)
+      );
     }
 
     $response->getBody()->write(json_encode([

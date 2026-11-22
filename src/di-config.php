@@ -1,5 +1,6 @@
 <?php
 
+use App\Service\Mailer;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\ORMSetup;
@@ -208,30 +209,7 @@ return [
     return $logger;
   },
 
-  PHPMailer::class => function (Configuration $config) {
-    $smtp = $config->get('email.smtp');
-
-    $mailer = new PHPMailer(true);
-    $mailer->isSMTP();
-    $mailer->SMTPKeepAlive = true;
-    $mailer->SMTPSecure = match($smtp['encryption']) {
-      'ssl' => PHPMailer::ENCRYPTION_SMTPS,
-      'tls' => PHPMailer::ENCRYPTION_STARTTLS,
-      default => ''
-    };
-    $mailer->Host = $smtp['host'];
-    $mailer->Port = $smtp['port'];
-    $mailer->XMailer = null;
-    $mailer->setFrom($config->get('email.from_address'), "{$config->get('site.game_name')} {$config->get('site.title')}");
-    $mailer->WordWrap = 80;
-
-    // If we have a username/password, use authentication
-    if (!empty($smtp['username']) && !empty($smtp['password'])) {
-      $mailer->SMTPAuth = true;
-      $mailer->Username = $smtp['username'];
-      $mailer->Password = $smtp['password'];
-    }
-
-    return $mailer;
+  Mailer::class => function (Configuration $config, Logger $logger) {
+    return new Mailer($config, $logger);
   }
 ];
