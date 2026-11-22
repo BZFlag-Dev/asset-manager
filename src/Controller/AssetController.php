@@ -67,6 +67,20 @@ class AssetController
     $width = min($width, 256);
     $height = min($height, 256);
 
+    // Create the cache directory if it doesn't yet exist
+    $cache_dir = dirname(__DIR__, 2).'/var/cache/thumbnails';
+    if (!is_dir($cache_dir)) {
+      mkdir($cache_dir, 0750, true);
+    }
+
+    // Check if a cached thumbnail already exists
+    $cache_path = "$cache_dir/{$asset->getHashSha256()}_{$width}_$height.avif";
+    if (file_exists($cache_path)) {
+      $response = $response->withHeader('Content-Type', 'image/avif');
+      $response->getBody()->write(file_get_contents($cache_path));
+      return $response;
+    }
+
     // Store a reference to the full path of the file
     $fullPath = $config->get('path.upload')."/{$asset->getBzid()}_{$asset->getFilename()}";
 
@@ -132,7 +146,8 @@ class AssetController
         if (ob_start()) {
           // Attempt to write the image to the buffer in AVIF format
           if (imageavif($thumbnail)) {
-            // If that worked, we write the response back to the browser
+            // If that worked, cache it and write the response back to the browser
+            file_put_contents($cache_path, ob_get_contents());
             $response = $response->withHeader('Content-Type', 'image/avif');
             $response->getBody()->write(ob_get_clean());
           } else {
