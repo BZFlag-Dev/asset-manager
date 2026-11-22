@@ -41,14 +41,8 @@ class Queue
   #[ORM\Column(type: 'boolean', nullable: false, options: ['default' => false])]
   private bool $change_requested = false;
 
-  /*public function getAssetId(): ?int {
-    return $this->asset_id;
-  }
-
-  public function setAssetId(?int $asset_id): self {
-    $this->asset_id = $asset_id;
-    return $this;
-  }*/
+  #[ORM\Column(type: 'string', nullable: false, insertable: false, updatable: false)]
+  private ?string $created_at = null;
 
   public function getAsset(): ?Asset
   {

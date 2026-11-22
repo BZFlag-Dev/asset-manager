@@ -697,10 +697,8 @@ class ManagementController
   #[AuthRequirement('admin')]
   public function queue(App $app, ServerRequestInterface $request, ResponseInterface $response, Twig $twig, EntityManager $entityManager, SpdxLicenses $spdx): ResponseInterface
   {
-    // TODO: Pagination?
-
-    // Get all the items in the queue
-    $pending = $entityManager->getRepository(Queue::class)->findAll();
+    // Fetch up to 50 items from the queue, oldest first
+    $pending = $entityManager->getRepository(Queue::class)->findBy(['change_requested' => 0], ['created_at' => 'ASC'], 50);
 
     // TODO: Replace this with some twig function?
     /*foreach ($queue as &$asset) {
