@@ -8,7 +8,6 @@ use League\Config\Configuration;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Nette\Schema\Expect;
-use PHPMailer\PHPMailer\PHPMailer;
 use Slim\App;
 use Slim\Csrf\Guard;
 use Slim\Views\Twig;
