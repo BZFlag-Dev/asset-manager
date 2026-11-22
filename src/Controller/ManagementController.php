@@ -218,11 +218,8 @@ class ManagementController
             ->setLicenseUrl($asset['license_url'])
             ->setLicenseText($asset['license_text'])
           ;
-          // TODO: Check if I have to call setAsset with the updated asset
           $queue->setChangeRequested(false);
           try {
-            // TODO: Check if I have to separately persist $asset
-            //$entityManager->persist($asset);
             $entityManager->persist($queue);
             $entityManager->flush();
           } catch (ORMException $e) {
