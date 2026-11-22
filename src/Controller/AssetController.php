@@ -99,9 +99,9 @@ class AssetController
 
         // Adjust the target dimensions to match the source ratio
         if ($sourceRatio > $targetRatio) {
-          $height = floor($info[1] / ($info[0] / $width));
+          $height = (int)floor($info[1] / ($info[0] / $width));
         } elseif ($sourceRatio < $targetRatio) {
-          $width = floor($info[0] / ($info[1] / $height));
+          $width = (int)floor($info[0] / ($info[1] / $height));
         }
 
         $thumbnail = imagecreatetruecolor($width, $height);
