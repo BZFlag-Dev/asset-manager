@@ -184,7 +184,8 @@ class ManagementController
         continue;
       }
 
-      // If changes aren't requested, skip this one
+      // If changes aren't requested, silently ignore this one. The user might have had another tab open and submitted
+      // an old form.
       if (!$queue->isChangeRequested()) {
         continue;
       }
@@ -226,14 +227,12 @@ class ManagementController
             $entityManager->flush();
           } catch (ORMException $e) {
             $logger->error("Failed to persist user changes to queue.", ['message' => $e->getMessage()]);
-            $return['asset_errors'][$asset_id][] = 'Unknown error.';
+            $return['asset_errors'][$asset_id] = ['Unknown error.'];
             continue;
           }
 
           $successful_files++;
         }
-      } else {
-        $return['asset_errors'][$asset_id][] = 'No changes were made.';
       }
     }
 
