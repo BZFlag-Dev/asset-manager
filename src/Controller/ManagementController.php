@@ -611,6 +611,7 @@ class ManagementController
           continue;
         }
 
+        $entityManager->beginTransaction();
         try {
           $asset = new Asset();
           $asset
@@ -629,7 +630,6 @@ class ManagementController
             ->setLicenseText($d['license_text'])
           ;
           $entityManager->persist($asset);
-          $entityManager->flush();
 
           $queue = new Queue();
           $queue
@@ -638,7 +638,10 @@ class ManagementController
           ;
           $entityManager->persist($queue);
           $entityManager->flush();
+          $entityManager->commit();
         } catch (Exception|ORMException $e) {
+          $entityManager->rollback();
+          $entityManager->clear();
           $logger->critical("A database error occurred while adding file to the queue", [
             'bzid' => $session->get('bzid'),
             'username' => $session->get('username'),
