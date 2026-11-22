@@ -766,7 +766,8 @@ class ManagementController
           // Create the final directory if it doesn't exist
           if (!is_dir($path_final_dir)) {
             if (!file_exists($path_final_dir)) {
-              if (!mkdir($path_final_dir) || !$indexGenerator->writeIndex('')) {
+              // If we're creating a new top level directory, also rebuild the root index file.
+              if (!mkdir($path_final_dir, 750, true) || !$indexGenerator->writeIndex('')) {
                 $file_errors[$id][] = 'Failed to create the final directory or write the index file.';
                 continue;
               }
