@@ -27,7 +27,7 @@ use Monolog\Logger;
 
 class SessionHelper
 {
-  private const SESSION_NAME = 'assetmanager';
+  private const string SESSION_NAME = 'assetmanager_session';
 
   public function __construct(protected Configuration $config, protected Logger $logger)
   {

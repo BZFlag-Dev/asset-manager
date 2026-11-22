@@ -22,6 +22,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use Exception;
 use League\Config\Configuration;
 use Monolog\Logger;
 use PHPMailer\PHPMailer\PHPMailer;
@@ -42,8 +43,8 @@ class Mailer
     $this->c_SMTPSecure = $config->get('email.smtp.encryption');
     $this->c_SMTPHost = $config->get('email.smtp.host');
     $this->c_SMTPPort = $config->get('email.smtp.port');
-    $this->c_SMTPUser = $config->get('email.smtp.username', '');
-    $this->c_SMTPPassword = $config->get('email.smtp.password', '');
+    $this->c_SMTPUser = $config->get('email.smtp.username');
+    $this->c_SMTPPassword = $config->get('email.smtp.password');
     $this->c_FromAddress = $config->get('email.from_address');
     $this->c_FromName = "{$config->get('site.game_name')} {$config->get('site.title')}";
     $this->c_simulate = $config->get('email.simulate');
@@ -109,7 +110,7 @@ class Mailer
       else {
         $mailer->send();
       }
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
       $this->logger->error("Failed to send email.", ['error' => $e->getMessage()]);
     }
   }

@@ -87,7 +87,7 @@ class RequireAuth
             ->withHeader('Content-Type', 'application/json')
             ->withStatus(403);
         } else {
-          return (new Response())
+          return new Response()
             ->withHeader('Location', $this->app->getRouteCollector()->getRouteParser()->urlFor('home'))
             ->withStatus(302);
         }
@@ -108,7 +108,7 @@ class RequireAuth
             ->withStatus(403);
         } else {
           // TODO: Figure out if we can/should show an error page here instead
-          return (new Response())
+          return new Response()
             ->withHeader('Location', $this->app->getRouteCollector()->getRouteParser()->urlFor('home'))
             ->withStatus(302);
         }

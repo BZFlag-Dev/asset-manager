@@ -27,7 +27,7 @@ function previewImage(canvas, img_src) {
     const img = new Image;
     // Set the source and add a listener for the load event
     img.src = img_src;
-    img.addEventListener('load', (event) => {
+    img.addEventListener('load', () => {
         // Now calculate a size that fits the image into our canvas without
         // altering the aspect ratio.
         const size = clampImageSize(img.width, img.height, canvas.width, canvas.height);
