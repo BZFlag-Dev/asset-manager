@@ -36,9 +36,11 @@ const error_container = document.getElementById('errors');
 // Upload limit summary elements and counters
 const total_files_span = document.getElementById('total_files');
 const total_files_progress = document.getElementById('total_files_progress');
+total_files_progress.style.width = '0';
 let total_files = 0;
 const total_size_span = document.getElementById('total_size');
 const total_size_progress = document.getElementById('total_size_progress');
+total_size_progress.style.width = '0';
 let total_bytes = 0;
 
 function updateTotals() {
