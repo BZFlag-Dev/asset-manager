@@ -38,7 +38,7 @@ class AssetController
   public function view(ServerRequestInterface $request, ResponseInterface $response, Configuration $config, EntityManager $entityManager, SessionHelper $session, string $bzid, int $queueid, int $width = 0, int $height = 0): ResponseInterface
   {
     // Require that a user is logged in and is either viewing their own assets or are an admin
-    if (!$session->exists('username') || (!$session->get('is_admin', false) && $session->get('bzid') !== $bzid)) {
+    if (!$session->isLoggedIn() || (!$session->isAdmin() && $session->getBZID() !== $bzid)) {
       $response->getBody()->write("401 Unauthorized");
       return $response
           ->withStatus(401);

@@ -71,25 +71,8 @@ class RequireAuth
       }
     }
 
-    // Check if we have a valid session
-    $valid_session =
-      // Must have a bzid, username, and clean_username set
-      $this->session->exists('bzid') && $this->session->exists('username') && $this->session->exists('clean_username') &&
-
-      // Check if last activity exceeds our limit
-      // TODO: Should we check this here or just rely on PHP's own handling?
-
-      // Check if overall session duration exceeds our limit
-      // TODO: Should we bother with a max duration?
-
-      // Check if the user agent changed
-      $this->session->get('user_agent', '') === ($_SERVER['HTTP_USER_AGENT'] ?? '')
-    ;
-
     // If the session is not valid, check if the user can view this page
-    if (!$valid_session) {
-      $this->session->clear();
-
+    if (!$this->session->isLoggedIn()) {
       // If the page needs auth, redirect or send an error
       if ($needs_auth) {
         if ($use_json) {
@@ -111,7 +94,7 @@ class RequireAuth
       }
     } else {
       // If this page requires admin rights and the user isn't an admin...
-      if ($needs_admin && $this->session->get('is_admin', false) !== true) {
+      if ($needs_admin && !$this->session->isAdmin()) {
         $response = new Response();
         if ($use_json) {
           $response->getBody()->write(json_encode([

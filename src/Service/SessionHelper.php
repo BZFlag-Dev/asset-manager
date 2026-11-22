@@ -28,6 +28,7 @@ use Monolog\Logger;
 class SessionHelper
 {
   private const SESSION_NAME = 'assetmanager';
+
   public function __construct(protected Configuration $config, protected Logger $logger)
   {
   }
@@ -100,34 +101,29 @@ class SessionHelper
       'use_trans_sid' => 0,
       'gc_maxlifetime' => $lifetime,
     ]);
+
+    // If the user agent isn't stored yet, do so now
+    if (!$this->exists('user_agent')) {
+      $this->set('user_agent', $_SERVER['HTTP_USER_AGENT'] ?? '');
+    }
+    // If it exists, verify it matches, and if not, clear the session and regenerate the session ID
+    elseif ($this->get('user_agent') !== ($_SERVER['HTTP_USER_AGENT'] ?? '')) {
+      $this->clear();
+      $this->regenerate_id();
+    }
   }
 
-  public function regenerate_id(): void
-  {
-    session_regenerate_id(true);
-  }
-
-  public function exists($key): bool
+  private function exists($key): bool
   {
     return array_key_exists($key, $_SESSION);
   }
 
-  public function __isset($key): bool
-  {
-    return $this->exists($key);
-  }
-
-  public function get($key, $default = null): mixed
+  private function get($key, $default = null): mixed
   {
     return $this->exists($key) ? $_SESSION[$key] : $default;
   }
 
-  public function __get(string $key)
-  {
-    return $this->get($key);
-  }
-
-  public function set($key, $value = null): void
+  private function set($key, $value = null): void
   {
     if ($value === null) {
       $this->unset($key);
@@ -136,12 +132,7 @@ class SessionHelper
     }
   }
 
-  public function __set(string $key, $value): void
-  {
-    $this->set($key, $value);
-  }
-
-  public function unset($key): void
+  private function unset($key): void
   {
     unset($_SESSION[$key]);
   }
@@ -149,6 +140,11 @@ class SessionHelper
   public function clear(): void
   {
     $_SESSION = [];
+  }
+
+  public function regenerate_id(): void
+  {
+    session_regenerate_id(true);
   }
 
   public function destroy(): void
@@ -166,5 +162,47 @@ class SessionHelper
       'httponly' => $params['httponly'],
       'samesite' => $params['samesite'] ?? 'Lax',
     ]);
+  }
+
+  public function setUserInformation(string $bzid, string $username, string $clean_username): void
+  {
+    $this->set('bzid', $bzid);
+    $this->set('username', $username);
+    $this->set('clean_username', $clean_username);
+  }
+
+  public function setAdmin($isAdmin = false): void
+  {
+    $this->set('is_admin', $isAdmin);
+  }
+
+  // A valid login session needs three values: bzid, username, and clean_username
+  public function isLoggedIn(): bool
+  {
+    return
+      !empty($this->get('bzid', '')) &&
+      !empty($this->get('username', '')) &&
+      !empty($this->get('clean_username', ''))
+    ;
+  }
+
+  public function isAdmin(): bool
+  {
+    return $this->isLoggedIn() && $this->get('is_admin', false);
+  }
+
+  public function getBZID(): string
+  {
+    return $this->get('bzid', '');
+  }
+
+  public function getUsername(): string
+  {
+    return $this->get('username', '');
+  }
+
+  public function getCleanUsername(): string
+  {
+    return $this->get('clean_username', '');
   }
 }

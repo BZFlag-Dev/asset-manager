@@ -54,12 +54,12 @@ class ManagementController
     $licenses = null;
     $upload_config = null;
 
-    if ($session->exists('bzid')) {
+    if ($session->isLoggedIn()) {
       $queue = $entityManager->getRepository(Queue::class)
         ->createQueryBuilder('q')
         ->innerJoin('q.asset', 'a')
         ->where('a.bzid = :bzid')
-        ->setParameter('bzid', $session->get('bzid'))
+        ->setParameter('bzid', $session->getBZID())
         ->getQuery()
         ->getResult();
 
@@ -174,7 +174,7 @@ class ManagementController
         ->innerJoin('q.asset', 'a')
         ->where('a.bzid = :bzid')
         ->andWhere('a.id = :id')
-        ->setParameter('bzid', $session->get('bzid'))
+        ->setParameter('bzid', $session->getBZID())
         ->setParameter('id', $asset_id)
         ->getQuery()
         ->getOneOrNullResult();
@@ -306,10 +306,10 @@ class ManagementController
       foreach ($result as $line) {
         if (str_starts_with($line, 'TOKGOOD: ')) {
           $foundTOKGOOD = true;
-          $session->set('is_admin', (
+          $session->setAdmin(
             ($pos = strpos($line, ':', 8)) !== false &&
               in_array($config->get('auth.admin_group'), explode(':', substr($line, $pos + 1)), true)
-          ));
+          );
         } elseif (str_starts_with($line, 'BZID: ')) {
           // Split the value of the BZID line into at most two parts
           $bzid_and_username = explode(' ', substr($line, 6), 2);
@@ -328,9 +328,11 @@ class ManagementController
           }
 
           // Set the session values
-          $session->set('bzid', $bzid_and_username[0]);
-          $session->set('username', $bzid_and_username[1]);
-          $session->set('clean_username', $clean_username);
+          $session->setUserInformation(
+            bzid: $bzid_and_username[0],
+            username: $bzid_and_username[1],
+            clean_username: $clean_username
+          );
 
           // Indicate that we found a valid BZID line
           $foundBZID = true;
@@ -354,9 +356,6 @@ class ManagementController
 
     // Regenerate the session ID
     $session->regenerate_id();
-
-    // Store the user-agent so that we can compare later for session validation
-    $session->set('user_agent', $_SERVER['HTTP_USER_AGENT']);
 
     return $twig->render($response, 'login.html.twig');
   }
@@ -422,7 +421,7 @@ class ManagementController
     return $twig->render($response, 'upload.html.twig', [
       'upload_config' => $upload_config,
       'licenses' => $licenses,
-      'upload_directory' => $session->get('clean_username')
+      'upload_directory' => $session->getCleanUsername()
     ]);
   }
 
@@ -564,8 +563,8 @@ class ManagementController
       }
 
       // Build the temporary and final destination paths
-      $path_queue = $config->get('path.upload')."/{$session->get('bzid')}_$filename";
-      $path_final = $config->get('path.files')."/{$session->get('clean_username')}/$filename";
+      $path_queue = $config->get('path.upload')."/{$session->getBZID()}_$filename";
+      $path_final = $config->get('path.files')."/{$session->getCleanUsername()}/$filename";
 
       // Verify that a file with the same name doesn't already exist in the queue for this user
       if (file_exists($path_queue)) {
@@ -612,10 +611,10 @@ class ManagementController
         try {
           $asset = new Asset();
           $asset
-            ->setPath($session->get('clean_username'))
+            ->setPath($session->getCleanUsername())
             ->setFilename($filename)
-            ->setBzid($session->get('bzid'))
-            ->setUsername($session->get('username'))
+            ->setBzid($session->getBZID())
+            ->setUsername($session->getUsername())
             ->setFileSize($file_size)
             ->setHashSha256(hash_file('sha256', $path_queue))
             ->setMimeType($mime_type)
@@ -640,8 +639,8 @@ class ManagementController
           $entityManager->rollback();
           $entityManager->clear();
           $logger->critical("A database error occurred while adding file to the queue", [
-            'bzid' => $session->get('bzid'),
-            'username' => $session->get('username'),
+            'bzid' => $session->getBZID(),
+            'username' => $session->getUsername(),
             'filename' => $filename,
             'file_size' => $file_size,
             'message' => $e->getMessage(),
@@ -782,7 +781,7 @@ class ManagementController
           // Approve the asset
           try {
             $asset
-              ->setApprovedBy($session->get('username'))
+              ->setApprovedBy($session->getUsername())
               ->setApprovedAtToNow()
             ;
             $entityManager->persist($asset);
