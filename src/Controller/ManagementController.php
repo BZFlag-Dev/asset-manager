@@ -227,7 +227,7 @@ class ManagementController
             $entityManager->flush();
           } catch (ORMException $e) {
             $logger->error("Failed to persist user changes to queue.", ['message' => $e->getMessage()]);
-            $return['asset_errors'][$asset_id] = ['Unknown error.'];
+            $return['asset_errors'][$asset_id] = ['A database error occurred.'];
             continue;
           }
 
