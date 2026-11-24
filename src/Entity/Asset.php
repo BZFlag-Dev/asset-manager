@@ -51,7 +51,7 @@ class Asset
   #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
   private ?int $file_size = null;
 
-  #[ORM\Column(type: 'string', length: 64)]
+  #[ORM\Column(type: 'string', length: 64, nullable: true)]
   private ?string $hash_sha256 = null;
 
   #[ORM\Column(type: 'string', length: 255)]
@@ -66,25 +66,25 @@ class Asset
   #[ORM\Column(type: 'string', length: 255)]
   private ?string $license_id = null;
 
-  #[ORM\Column(type: 'string', length: 255)]
+  #[ORM\Column(type: 'string', length: 255, nullable: true)]
   private ?string $license_name = null;
 
-  #[ORM\Column(type: 'string', length: 255)]
+  #[ORM\Column(type: 'string', length: 255, nullable: true)]
   private ?string $license_url = null;
 
-  #[ORM\Column(type: 'text', length: 65535)]
+  #[ORM\Column(type: 'text', length: 65535, nullable: true)]
   private ?string $license_text = null;
 
-  #[ORM\Column(type: 'string', length: 255)]
+  #[ORM\Column(type: 'string', length: 255, nullable: true)]
   private ?string $approved_by = null;
 
   #[ORM\Column(type: 'datetime', nullable: true)]
   private ?DateTime $approved_at = null;
 
-  #[ORM\Column(type: 'datetime', updatable: false)]
+  #[ORM\Column(type: 'datetime', insertable: false, updatable: false)]
   private DateTime $created_at;
 
-  #[ORM\Column(type: 'datetime', nullable: true, updatable: false)]
+  #[ORM\Column(type: 'datetime', nullable: true, insertable: false, updatable: false)]
   private ?DateTime $updated_at = null;
 
   public function getId(): ?int

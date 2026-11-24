@@ -22,6 +22,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity, ORM\Table(name: 'queue')]
@@ -29,7 +30,7 @@ class Queue
 {
   #[ORM\Id]
   #[ORM\OneToOne(targetEntity: Asset::class, cascade: ['persist'])]
-  #[ORM\JoinColumn(name: 'asset_id', referencedColumnName: 'id', nullable: false)]
+  #[ORM\JoinColumn(name: 'asset_id', referencedColumnName: 'id')]
   private ?Asset $asset = null;
 
   #[ORM\Column(type: 'string', length: 255)]
@@ -38,11 +39,11 @@ class Queue
   #[ORM\Column(type: 'text', length: 65535, nullable: true)]
   private ?string $details = null;
 
-  #[ORM\Column(type: 'boolean', nullable: false, options: ['default' => false])]
+  #[ORM\Column(type: 'boolean', options: ['default' => false])]
   private bool $change_requested = false;
 
-  #[ORM\Column(type: 'string', nullable: false, insertable: false, updatable: false)]
-  private ?string $created_at = null;
+  #[ORM\Column(type: 'datetime', insertable: false, updatable: false)]
+  private ?DateTime $created_at = null;
 
   public function getAsset(): ?Asset
   {
